@@ -1,11 +1,11 @@
 ;; google patent utility
 ;; gp-util.el
-
+;; -*- coding: utf-8 -*-
 
 (require 'dom)
 
-(defvar db-path "/mnt/c/wsl/db/patent/")
-(defvar rawfile-name "raw.html")
+(defcustom db-path "/mnt/c/wsl/db/patent/" "full path to the directory where rawfiles are stored.")
+(defcustom rawfile-name "raw.html" "filename for the raw files.")
 
 (defun gp-search-db-for-patent-util (patent-number)
   (let ((full-path (concat db-path patent-number "/" rawfile-name)))
