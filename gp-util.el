@@ -50,7 +50,7 @@
 (defun gp-retrieve-patent (PATENT-NUMBER)
   "Retrieve a patent specified by PATENT-NUMBER from Google Patent 
    and transform into a dom tree"
-  (let ((url (concat "https://patents.google.com/patent/" patent-number)))
+  (let ((url (concat "https://patents.google.com/patent/" PATENT-NUMBER)))
     (with-current-buffer (url-retrieve-synchronously url)
       (mm-with-part (mm-dissect-buffer 'no-strict-mime)
 	(libxml-parse-html-region (point-min) (point-max))))))
