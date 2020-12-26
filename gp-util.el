@@ -3,9 +3,11 @@
 ;; -*- coding: utf-8 -*-
 
 (require 'dom)
-
-(defcustom db-path "/mnt/c/wsl/db/patent/" "full path to the directory where rawfiles are stored.")
-(defcustom rawfile-name "raw.html" "filename for the raw files.")
+(require 'request)
+(defcustom db-path "/mnt/c/wsl/db/patent/"
+  "full path to the directory where rawfiles are stored.")
+(defcustom rawfile-name "raw.html"
+  "filename for the raw files.")
 
 (defun gp-search-db-for-patent-util (patent-number)
   (let ((full-path (concat db-path patent-number "/" rawfile-name)))
@@ -45,5 +47,12 @@
 ;; dom-attributes 特定のノードのattributesのリストを取り出す
 ;; dom-attr (node attr) 特定のノードの指定した attrの値を取り出す?
 
+(defun gp-retrieve-patent (PATENT-NUMBER)
+  "Retrieve a patent specified by PATENT-NUMBER from Google Patent 
+   and transform into a dom tree"
+  (let ((url (concat "https://patents.google.com/patent/" patent-number)))
+    (with-current-buffer (url-retrieve-synchronously url)
+      (mm-with-part (mm-dissect-buffer 'no-strict-mime)
+	(libxml-parse-html-region (point-min) (point-max))))))
 
 (provide 'gp-util)
