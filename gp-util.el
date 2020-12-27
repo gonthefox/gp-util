@@ -55,4 +55,22 @@
       (mm-with-part (mm-dissect-buffer 'no-strict-mime)
 	(libxml-parse-html-region (point-min) (point-max))))))
 
+(defun gp-retrieve-and-store-patent (patent-number)
+  "Retrieve a patent from Google patents and store it in DB-PATH as RAWFILE-NAME"
+  (let ((url (concat "https://patents.google.com/patent/" patent-number)))
+    (request url
+      :parser  'buffer-string
+      :success (function* (lambda (&key data &allow-other-keys)
+			    (when data
+			      (with-temp-buffer
+				(erase-buffer)
+				(insert data)
+				(write-region (point-min) (point-max)
+					      (concat db-path rawfile-name))
+				))))
+      :error (function* (lambda (&key error-thrown &allow-other-keys)
+			  (message "Got error %S" error-thrown)))
+      )
+    ))
+
 (provide 'gp-util)
