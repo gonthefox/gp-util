@@ -4,73 +4,84 @@
 
 (require 'dom)
 (require 'request)
-(defcustom db-path "/mnt/c/wsl/db/patent/"
+
+(defcustom db-path "/var/db/patent/"
   "full path to the directory where rawfiles are stored.")
+
 (defcustom rawfile-name "raw.html"
   "filename for the raw files.")
 
+(defcustom gp-url "https://patents.google.com/patent/"
+  "URL of Google Patents")
+
+(defcustom wget-program "/usr/bin/wget"
+  "path for wget")
+
+(defun gp-full-path-to-rawfile-store (patent-number)
+  "Return the full path to a rawfile store."
+  (concat db-path patent-number "/"))
+
+(defun gp-full-path-to-rawfile (patent-number)
+  "Return the full path to a raw file."
+  (concat (gp-full-path-to-rawfile-store patent-number) rawfile-name))
+
+(defun gp-find-patent (patent-number)
+  "Return t if the raw file exists"
+  (if (file-exists-p (gp-full-path-to-rawfile patent-number)) t))
+
+(defun gp-get-patent (patent-number)
+  "Get a patent document as a string of the raw html"
+  ;; 指定した特許公報がDBに存在すれば取得
+  (if (gp-find-patent patent-number) (gp-get-patent-from-db patent-number)
+    ;; Google Patentから特許公報を取得
+    (gp-retrieve-patent patent-number)
+    ;; 指定した特許公報がDBに存在すれば取得    
+    (if (gp-find-patent patent-number) (gp-get-patent-from-db patent-number)
+      (message "Error: %s cannot load." patent-number ))))
+
+(defun gp-get-patent-from-db (patent-number)
+  (with-temp-buffer
+    (insert-file-contents (gp-full-path-to-rawfile patent-number))
+    (buffer-substring-no-properties (point-min) (point-max))))
+
+(defun gp-retrieve-patent (patent-number)
+  (gp-retrieve-and-store-patent patent-number)
+  )
+
 (defun gp-search-db-for-patent-util (patent-number)
-  (let ((full-path (concat db-path patent-number "/" rawfile-name)))
-    (if (file-exists-p full-path) (format "%s" full-path))))
+  "Return full path to the specified patent as a raw html file"
+  (let ((filename  (gp-full-path-to-rawfile patent-number)))
+    (if (file-exists-p filename) (format "%s" filename) nil)))
 
 ;; kind-code 付きでパスが見つからなかった場合は、kind-code抜きで検索
 (defun gp-search-db-for-patent (patent-number)
   "Search DB for the patent."
   (or (gp-search-db-for-patent-util patent-number)
-      (gp-search-db-for-patent-util (strip-kind-code patent-number))))
+      (gp-search-db-for-patent-util (strip-kind-code patent-number))
+      nil
+      ))
 
 (defun strip-kind-code (patent-number)
   (string-match "\\([A-Z]\\{2\\}[0-9]\\{7,8\\}\\)" patent-number)
   (setq short-pn (match-string 1 patent-number)))
 
-;(gp-search-db-for-patent "US8165102B1")
-
-(defun gp-get-dom (patent-number)
-  "Convert a HTML into a DOM tree and return it"
-  (let ((file (gp-search-db-for-patent patent-number)))
-    (with-temp-buffer
-      (insert-file-contents file)
-      (buffer-substring-no-properties (point-min) (point-max))
-      (libxml-parse-html-region (point-min) (point-max)))))
-
-;(gp-get-title "US7796941")
-
-(defun gp-get-title (patent-number)
-  "Obtain the title of the patent."
-  (let ((span-list (dom-by-tag (gp-get-dom patent-number) 'span))
-	(node))
-    (while (not (string= (dom-attr node 'itemprop) "title"))
-      (setq node (car span-list))
-      (setq span-list (cdr span-list)))
-    (nth 0 (dom-strings node))))
-
-;; dom-attributes 特定のノードのattributesのリストを取り出す
-;; dom-attr (node attr) 特定のノードの指定した attrの値を取り出す?
-
-(defun gp-retrieve-patent (PATENT-NUMBER)
+(defun gp-retrieve-and-store-patent (PATENT-NUMBER)
   "Retrieve a patent specified by PATENT-NUMBER from Google Patent 
    and transform into a dom tree"
-  (let ((url (concat "https://patents.google.com/patent/" PATENT-NUMBER)))
-    (with-current-buffer (url-retrieve-synchronously url)
-      (mm-with-part (mm-dissect-buffer 'no-strict-mime)
-	(libxml-parse-html-region (point-min) (point-max))))))
+  (gp-retrieve-and-store-patent-wget patent-number))
 
-(defun gp-retrieve-and-store-patent (patent-number)
+(defun gp-retrieve-and-store-patent-wget (patent-number)
   "Retrieve a patent from Google patents and store it in DB-PATH as RAWFILE-NAME"
-  (let ((url (concat "https://patents.google.com/patent/" patent-number)))
-    (request url
-      :parser  'buffer-string
-      :success (function* (lambda (&key data &allow-other-keys)
-			    (when data
-			      (with-temp-buffer
-				(erase-buffer)
-				(insert data)
-				(write-region (point-min) (point-max)
-					      (concat db-path rawfile-name))
-				))))
-      :error (function* (lambda (&key error-thrown &allow-other-keys)
-			  (message "Got error %S" error-thrown)))
-      )
-    ))
+  (let ((url  (concat gp-url  patent-number))
+	(store (gp-full-path-to-rawfile-store patent-number))
+	(file  (gp-full-path-to-rawfile patent-number)))
+    (unless (file-exists-p file)
+      (unless (file-exists-p store) (make-directory store t))
+      (async-shell-command
+       (mapconcat #'shell-quote-argument
+		  (list wget-program url "-O" file) " ")))))
+
+;(gp-get-patent "US6097367")
+
 
 (provide 'gp-util)
