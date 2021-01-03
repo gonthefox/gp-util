@@ -96,29 +96,36 @@
 (defun gp-get-patent-as-dom (patent-number)
   (your-sanitize-function (gp-get-patent-as-dom-1 patent-number)))
 
-(defun gp-get-title (patent-number)
-  (let ( (dom (gp-get-patent-as-dom patent-number)))
-    (setq span-list (dom-by-tag (dom-by-tag dom 'body) 'span))
-    (if (string= (cdr (assq 'itemprop (nth 1 (car span-list)))) "title")
-	(replace-regexp-in-string "^ +$" "" (nth 2 (car span-list))))))
+;; metadata group
+(defun gp-get-metadata-item (patent-number metadata-id)
+  "Get a metadata-item specified by metadata-id from metadata"
+(let ((span-list (dom-by-tag (gp-get-metadata patent-number) 'span)))
+  (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) metadata-id) s a)) span-list :initial-value nil)))
 
 (defun gp-get-application-number (patent-number)
-  (let (( dom (gp-get-patent-as-dom patent-number))
-	( output '()))
-    (setq span-list (dom-by-tag (dom-by-tag dom 'body) 'span))
-    (while span-list
-      (if (string= (cdr (assq 'itemprop (nth 1 (car span-list)))) "applicationNumber")
-	  (setq output (cons  (nth 2 (car span-list)) output ))
-	)
-      (setq span-list (cdr span-list))
-      )
-    output
-    ))
+  (gp-get-metadata-item patent-number "applicationNumber"))
 
-;(defun gp-get-abstract (patent-number)
-;  (dom-text (dom-by-class (gp-get-section patent-number "abstract") "abstract")))
+(defun gp-get-priority-date (patent-number)
+  (gp-get-metadata-item patent-number "priorityDate"))
 
+(defun gp-get-filing-date (patent-number)
+  (gp-get-metadata-item patent-number "filingDate"))
+
+(defun gp-get-title (patent-number)
+  (gp-get-metadata-item patent-number "title"))
+
+(defun gp-get-ifi-Status (patent-number)
+  (gp-get-metadata-item patent-number "ifiStatus"))
+
+(defun gp-get-representatitive-publication (patent-number)
+  (gp-get-metadata-item patent-number "representatitivePublication"))
+
+(defun gp-get-pripmary-language (patent-number)
+  (gp-get-metadata-item patent-number "primaryLanguage"))
+
+;; section group
 (defun gp-get-section (patent-number section-id)
+  "Get a section specified by section-id from dom"
 (let ((section-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'section)))
   (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) section-id) s a)) section-list :initial-value nil)))
 
@@ -133,7 +140,19 @@
   (gp-get-section patent-number "claims")
   )
 
+(defun gp-get-metadata (patent-number)
+  (gp-get-section patent-number "metadata")
+  )
 
+(defun gp-get-family (patent-number)
+  (gp-get-section patent-number "family")
+  )
+
+(defun gp-get-application (patent-number)
+  (gp-get-section patent-number "application")
+  )
+
+;; satitize function
 (defun your-sanitize-function (dom &optional result)
   (push (nreverse
          (cl-reduce (lambda (acc object)
