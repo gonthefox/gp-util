@@ -42,7 +42,10 @@
 (defun gp-get-patent-from-db (patent-number)
   (with-temp-buffer
     (insert-file-contents (gp-full-path-to-rawfile patent-number))
-    (buffer-substring-no-properties (point-min) (point-max))))
+    (while (re-search-forward "^[\s-]+$" nil t)
+      (replace-match ""))
+    (flush-lines "^\n")
+    (buffer-string)))    
 
 (defun gp-retrieve-patent (patent-number)
   (gp-retrieve-and-store-patent patent-number)
@@ -81,7 +84,71 @@
        (mapconcat #'shell-quote-argument
 		  (list wget-program url "-O" file) " ")))))
 
-;(gp-get-patent "US6097367")
+(defun gp-get-patent-as-dom-1 (patent-number)
+  (with-temp-buffer
+    (insert (gp-get-patent patent-number))
+    (while (re-search-forward "^[\s-]+$" nil t)
+      (replace-match ""))
+    (flush-lines "^\n")
+    (libxml-parse-html-region (point-min) (point-max))
+    ))
 
+(defun gp-get-patent-as-dom (patent-number)
+  (your-sanitize-function (gp-get-patent-as-dom-1 patent-number)))
+
+(defun gp-get-title (patent-number)
+  (let ( (dom (gp-get-patent-as-dom patent-number)))
+    (setq span-list (dom-by-tag (dom-by-tag dom 'body) 'span))
+    (if (string= (cdr (assq 'itemprop (nth 1 (car span-list)))) "title")
+	(replace-regexp-in-string "^ +$" "" (nth 2 (car span-list))))))
+
+(defun gp-get-application-number (patent-number)
+  (let (( dom (gp-get-patent-as-dom patent-number))
+	( output '()))
+    (setq span-list (dom-by-tag (dom-by-tag dom 'body) 'span))
+    (while span-list
+      (if (string= (cdr (assq 'itemprop (nth 1 (car span-list)))) "applicationNumber")
+	  (setq output (cons  (nth 2 (car span-list)) output ))
+	)
+      (setq span-list (cdr span-list))
+      )
+    output
+    ))
+
+;(defun gp-get-abstract (patent-number)
+;  (dom-text (dom-by-class (gp-get-section patent-number "abstract") "abstract")))
+
+(defun gp-get-section (patent-number section-id)
+(let ((section-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'section)))
+  (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) section-id) s a)) section-list :initial-value nil)))
+
+(defun gp-get-abstract (patent-number)
+  (gp-get-section patent-number "abstract"))
+
+(defun gp-get-description (patent-number)
+  (gp-get-section patent-number "description")
+  )
+
+(defun gp-get-claims (patent-number)
+  (gp-get-section patent-number "claims")
+  )
+
+
+(defun your-sanitize-function (dom &optional result)
+  (push (nreverse
+         (cl-reduce (lambda (acc object)
+                      (cond
+                       ((and (stringp object)
+                             (not (string-match-p "[[:graph:]]" object)))
+                        acc)
+                       ((or (atom object)
+                            (consp (car object)))
+                        (cons object acc))
+                       (t
+                        (your-sanitize-function object acc))))
+                    dom :initial-value nil))
+        result))
+
+;;(gp-get-patent "US6097367")
 
 (provide 'gp-util)
