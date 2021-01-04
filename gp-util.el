@@ -124,6 +124,7 @@
   (gp-get-metadata-item patent-number "primaryLanguage"))
 
 ;; claim group
+;; ちょっとダサい．cl-reduceを用いて書き直すべきか？
 (defun gp-get-claim-as-text (patent-number claim-id)
   "Get an individual claim specified by patent-number and claim-id."
   (let ((claim-list (gp-get-claim patent-number claim-id)))
