@@ -123,6 +123,32 @@
 (defun gp-get-pripmary-language (patent-number)
   (gp-get-metadata-item patent-number "primaryLanguage"))
 
+;; claim group
+(defun gp-get-claim-as-text (patent-number claim-id)
+  "Get an individual claim specified by patent-number and claim-id."
+  (let ((claim-list (gp-get-claim patent-number claim-id)))
+    (with-temp-buffer
+      (while claim-list
+	(let ((claim-list-2 (car claim-list)))
+	  (while claim-list-2
+	    (let ((cell (car claim-list-2)))
+	      (cond ((listp cell)
+		     (cond ((string= (dom-tag cell) "claim-ref") (insert (dom-text cell))))))
+	      (cond ((and (atom cell) (stringp cell)) (insert cell))))
+	    (setq claim-list-2 (cdr claim-list-2))))
+	(setq claim-list (cdr claim-list)))
+      (buffer-string))))
+
+(defun gp-get-claim (patent-number claim-id)
+  "Get a claim specified by claim-id from dom"
+  ;;  (nth 0 (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text")))
+  (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text"))  
+
+(defun gp-get-claim-1 (patent-number claim-id)
+  "Get a claim specified by claim-id from dom"
+(let ((div-list (dom-by-tag (gp-get-claims patent-number) 'div)))
+  (cl-reduce (lambda (d a) (if (string= (dom-attr d 'id) (format "CLM-%05d" claim-id)) d a)) div-list :initial-value nil)))
+
 ;; section group
 (defun gp-get-section (patent-number section-id)
   "Get a section specified by section-id from dom"
