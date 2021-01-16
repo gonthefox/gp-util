@@ -179,6 +179,40 @@
   (gp-get-section patent-number "application")
   )
 
+(defun gp-paragraph-renderer (dom)
+  "Receive a paragraph as a dom and render it as text."
+  (let (( num-string (dom-attr dom 'num)))
+    ;;    (format "#+begin_quote\n[%s]\n%s\n#+end_quote"
+    ;;    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string)) (dom-text dom))
+    (format "#+begin_quote\n[%s]\n%s\n#+end_quote"
+	    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string)) (dom-children dom))    
+    ))
+
+(defun gp-description-renderer-1 (dom result)
+  (append
+   (nreverse (cl-reduce 
+
+	      (lambda (acc object) 
+		(cond 
+		 ((and (listp object) (symbolp (car object)))
+		  (cond 
+		   ( (eq (car object) 'h2) (cons (format "** %s\n" (nth 2 object)) acc) )
+		   ( (eq (car object) 'heading) (cons (format "*** %s\n" (nth 2 object)) acc) )
+		   ( (eq (car object) 'p) (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
+		   ( (eq (car object) 'description-of-drawings) (gp-description-renderer-1 (cddr object) acc) )
+		   ( (listp (cddr object)) (gp-description-renderer-1 (cddr object) acc))
+		   ( t acc) ))
+		 (t acc) ))
+	      
+	      dom :initial-value nil
+	      ) ;; cl-reduce
+	     ) ;;nreverse
+   result) ;;append
+  );; defun
+
+(defun gp-description-renderer (dom)
+  (mapconcat 'identity (gp-description-renderer-1 dom nil) ""))
+
 ;; satitize function
 (defun your-sanitize-function (dom &optional result)
   (push (nreverse
