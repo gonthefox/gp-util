@@ -213,6 +213,32 @@
 (defun gp-description-renderer (dom)
   (mapconcat 'identity (nreverse (gp-description-renderer-1 dom nil)) ""))
 
+
+(defun gp-abstract-renderer-1 (dom result)
+  (append
+   (cl-reduce 
+
+    (lambda (acc object) 
+      (cond 
+       ((and (listp object) (symbolp (car object)))
+	(cond 
+	 ( (eq (car object) 'h2) (cons (format "** %s\n" (nth 2 object)) acc) )
+	 ( (eq (car object) 'heading) (cons (format "*** %s\n" (nth 2 object)) acc) )
+	 ( (and (eq (car object) 'div) (eq (car (car (car (cdr object)))) 'num ))
+	   (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
+	 ( t (gp-abstract-renderer-1 (cddr object) acc ))
+	 ( t acc)
+	 ))
+       (t acc)))
+	      
+    dom :initial-value nil
+    ) ;; cl-reduce
+   result) ;;append
+  );; defun
+
+(defun gp-abstract-renderer (dom)
+  (mapconcat 'identity (nreverse (gp-abstract-renderer-1 dom nil)) ""))
+
 ;; satitize function
 (defun your-sanitize-function (dom &optional result)
   (push (nreverse
