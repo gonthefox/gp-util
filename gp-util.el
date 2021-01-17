@@ -190,28 +190,28 @@
 
 (defun gp-description-renderer-1 (dom result)
   (append
-   (nreverse (cl-reduce 
+   (cl-reduce 
 
-	      (lambda (acc object) 
-		(cond 
-		 ((and (listp object) (symbolp (car object)))
-		  (cond 
-		   ( (eq (car object) 'h2) (cons (format "** %s\n" (nth 2 object)) acc) )
-		   ( (eq (car object) 'heading) (cons (format "*** %s\n" (nth 2 object)) acc) )
-		   ( (eq (car object) 'p) (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
-		   ( (eq (car object) 'description-of-drawings) (gp-description-renderer-1 (cddr object) acc) )
-		   ( (listp (cddr object)) (gp-description-renderer-1 (cddr object) acc))
-		   ( t acc) ))
-		 (t acc) ))
+    (lambda (acc object) 
+      (cond 
+       ((and (listp object) (symbolp (car object)))
+	(cond 
+	 ( (eq (car object) 'h2) (cons (format "** %s\n" (nth 2 object)) acc) )
+	 ( (eq (car object) 'heading) (cons (format "*** %s\n" (nth 2 object)) acc) )
+	 ( (eq (car object) 'p) (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
+	 ( t (gp-description-renderer-1 (cddr object) acc ))
+	 ( t acc)
+	 ))
+       (t acc)))
 	      
-	      dom :initial-value nil
-	      ) ;; cl-reduce
-	     ) ;;nreverse
+    dom :initial-value nil
+    ) ;; cl-reduce
    result) ;;append
   );; defun
 
+
 (defun gp-description-renderer (dom)
-  (mapconcat 'identity (gp-description-renderer-1 dom nil) ""))
+  (mapconcat 'identity (nreverse (gp-description-renderer-1 dom nil)) ""))
 
 ;; satitize function
 (defun your-sanitize-function (dom &optional result)
