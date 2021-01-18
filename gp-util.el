@@ -239,6 +239,42 @@
 (defun gp-abstract-renderer (dom)
   (mapconcat 'identity (nreverse (gp-abstract-renderer-1 dom nil)) ""))
 
+
+(defun gp-claim-text-renderer (dom)
+  "Receive a paragraph as a dom and render it as text."
+  (let (( num-string (dom-attr dom 'num)))
+    (format "#+begin_quote\n[%s]\n%s\n#+end_quote"
+	    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string)) (dom-children dom))    
+    ))
+
+
+(defun gp-claims-renderer-1 (dom result)
+  (append
+   (cl-reduce 
+
+    (lambda (acc object) 
+      (cond 
+       ((and (listp object) (symbolp (car object)))
+	(cond 
+	 ( (eq (car object) 'h2) (cons (format "** %s\n" (cddr object)) acc) )
+	 ( (eq (car object) 'heading) (cons (format "*** %s\n" (nth 2 object)) acc) )
+	 ( (eq (car object) 'claim-statement) (cons (format "%s\n" (nth 2 object)) acc) )	 
+	 ( (and (eq (car object) 'div) (eq (car (car (car (cdr object)))) 'id ))
+	   (cons (format "%s\n" (gp-claim-text-renderer object)) acc) )
+	 ( t (gp-claims-renderer-1 (cddr object) acc ))
+	 ( t acc)
+	 ))
+       (t acc)))
+	      
+    dom :initial-value nil
+    ) ;; cl-reduce
+   result) ;;append
+  );; defun
+
+
+(defun gp-claims-renderer (dom)
+  (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
+
 ;; satitize function
 (defun your-sanitize-function (dom &optional result)
   (push (nreverse
