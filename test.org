@@ -709,7 +709,6 @@ d-list
 (description-renderer d-list)
 #+END_SRC
 
-
 * [2021-01-18 Mon]
   
 #+BEGIN_SRC emacs-lisp :results raw
@@ -967,84 +966,101 @@ The invention claimed is:
 ((div ((class . claim-text)) 20. The content server of  (claim-ref ((idref . CLM-00019)) claim 19) , wherein the DRM packager bundles a rights package with the digital content prior to transmitting the digital content to the client, and wherein the rights package includes a decryption key for decrypting the digital content.))
 #+end_quote
 
-
-
 * [2021-01-19 Tue]
-#+BEGIN_SRC emacs-lisp
-(load-file "./gp-util.el")
-(require 'gp-util)
-(require 'dom)
-(setq patent-number "US8683200B2")
-(gp-claims-renderer (gp-get-claims patent-number))
+#+BEGIN_SRC emacs-lisp :results raw
+  (load-file "./gp-util.el")
+  (require 'gp-util)
+  (require 'dom)
+  (setq patent-number "US8683200B2")
+
+  (defun claim-text-renderer (dom)
+    "Receive claims as a dom and render it as text."
+      (format "#+begin_quote\n%s\n#+end_quote"
+	      (nreverse (claim-text-renderer-1 dom nil))
+      ))
+
+
+  (defun claims-renderer-1 (dom result)
+    (append
+     (cl-reduce 
+
+      (lambda (acc object) 
+	(cond 
+	 ((and (listp object) (symbolp (car object)))
+	  (cond 
+	   ( (eq (car object) 'h2) (cons (format "** %s\n"  (dom-texts object)) acc) )	 
+	   ( (eq (car object) 'heading) (cons (format "*** %s\n" (nth 2 object)) acc) )
+	   ( (eq (car object) 'claim-statement) (cons (format "%s\n" (nth 2 object)) acc) )	 
+	   ( (and (eq (car object) 'div) (eq (car (car (car (cdr object)))) 'id ))
+	     (cons (format "%s\n" (claim-text-renderer object)) acc) )
+	   ( t (claims-renderer-1 object acc ))
+	   ( t acc)
+	   ))
+	 (t acc)))
+
+      dom :initial-value nil
+      ) ;; cl-reduce
+     result) ;;append
+    );; defun
+
+
+  (defun claims-renderer (dom)
+    (mapconcat 'identity (nreverse (claims-renderer-1 dom nil)) ""))
+
+  ;(claims-renderer (gp-get-claims patent-number))
+  (defun claim-text-renderer-1 (dom result)
+    (append (cl-reduce (lambda (acc node)
+			 (cond 
+;                               ((stringp node) (cons (format "%s" node) acc))
+			       ((listp node) 
+			               (cond ((and (eq (car node) 'div) (stringp (cdr (cdr node)))) (cons (format "%s" (cdr (cdr node))) acc))
+                                             ((eq (car node) 'div) (claim-text-renderer-1 (cddr node) acc))
+				       ))
+				       (t acc))
+				)
+		       dom :initial-value nil
+		       )
+	    result))
+
+  (setq cc-list
+   '(div ((id . "CLM-00001") (num . "00001") (class . "claim"))
+    (div ((class . "claim-text")) "1. A content server for storing and distributing digital content, comprising:"
+    (div ((class . "claim-text")) "a processor;")
+    (div ((class . "claim-text")) "a content database configured to electronically store the digital content; and") 
+    (div ((class . "claim-text")) "a DRM packager, implemented at least in part in said processor, for adding a universal DRM layer to the digital content stored at said content database, wherein said universal DRM layer is able to access digital content in conformance with a plurality of different DRM implementations, said digital content being in conformance with one of said plurality of different DRM implementations."))))
+
+(claim-text-renderer cc-list)
 #+END_SRC
 
 #+RESULTS:
-#+begin_example
-,** Claims ( 20 )
-The invention claimed is:
-,#+begin_quote
-(a DRM packager, implemented at least in part in said processor, for adding a universal DRM layer to the digital content stored at said content database, wherein said universal DRM layer is able to access digital content in conformance with a plurality of different DRM implementations, said digital content being in conformance with one of said plurality of different DRM implementations.)
-,#+end_quote
-,#+begin_quote
-( wherein said DRM packager is configured to encrypt the digital content based upon the universal DRM layer.)
-,#+end_quote
-,#+begin_quote
-( wherein said DRM packager is configured to tamper-proof or watermark the digital content.)
-,#+end_quote
-,#+begin_quote
-( wherein said DRM packager is configured to tamper-proof or watermark the digital content.)
-,#+end_quote
-,#+begin_quote
-( wherein the DRM packager distributes the digital content over a computer network.)
-,#+end_quote
-,#+begin_quote
-( wherein said computer network is the Internet.)
-,#+end_quote
-,#+begin_quote
-( wherein the content database and the DRM packager are in communication over a computer network.)
-,#+end_quote
-,#+begin_quote
-( wherein said computer network is the Internet.)
-,#+end_quote
-,#+begin_quote
-( wherein the DRM packager further distributes a rights package to the user.)
-,#+end_quote
-,#+begin_quote
-( wherein the rights package is bundled with the digital content.)
-,#+end_quote
-,#+begin_quote
-( wherein the rights package includes a decryption key.)
-,#+end_quote
-,#+begin_quote
-( wherein the rights package includes a decryption key.)
-,#+end_quote
-,#+begin_quote
-( wherein the digital content includes text-based information.)
-,#+end_quote
-,#+begin_quote
-( wherein the digital content includes audio information.)
-,#+end_quote
-,#+begin_quote
-( wherein the digital content include visual information.)
-,#+end_quote
-,#+begin_quote
-( wherein the digital content includes audio and visual information.)
-,#+end_quote
-,#+begin_quote
-( wherein the step of transmitting the digital content includes the step of transmitting the digital content as streaming media.)
-,#+end_quote
-,#+begin_quote
-( wherein the DRM packager is configured, in response to a request from a client to receive the digital content in conformance with a first of the plurality of different DRM implementations, to distribute the digital content together with the universal DRM layer added to the digital content.)
-,#+end_quote
-,#+begin_quote
-(wherein said DRM packager is configured to encrypt the digital content, to tamper-proof or watermark the digital content, and to distribute the digital content.)
-,#+end_quote
-,#+begin_quote
-(, wherein the DRM packager bundles a rights package with the digital content prior to transmitting the digital content to the client, and wherein the rights package includes a decryption key for decrypting the digital content.)
-,#+end_quote
-#+end_example
+#+begin_quote
+nil
+#+end_quote
+#+begin_quote
+(1. A content server for storing and distributing digital content, comprising: a processor; a content database configured to electronically store the digital content; and a DRM packager, implemented at least in part in said processor, for adding a universal DRM layer to the digital content stored at said content database, wherein said universal DRM layer is able to access digital content in conformance with a plurality of different DRM implementations, said digital content being in conformance with one of said plurality of different DRM implementations.)
+#+end_quote
+#+begin_quote
+nil
+#+end_quote
+#+begin_quote
+(1. A content server for storing and distributing digital content, comprising: a processor; a content database configured to electronically store the digital content; and a DRM packager, implemented at least in part in said processor, for adding a universal DRM layer to the digital content stored at said content database, wherein said universal DRM layer is able to access digital content in conformance with a plurality of different DRM implementations, said digital content being in conformance with one of said plurality of different DRM implementations.)
+#+end_quote
 
+(section 
+((itemprop . claims)) 
+(h2 nil Claims ( (span ((itemprop . count)) 20) )) 
 
+(div ((itemprop . content)) (div ((mxw-id . PCLM59642781) (lang . EN) (load-source . patent-office) (class . claims))
+(claim-statement nil The invention claimed is:) 
+(div ((class . claim)) 
 
+ (div ((id . "CLM-00001") (num . "00001") (class . "claim"))
+ (div ((class . "claim-text")) "1. A content server for storing and distributing digital content, comprising:"
+ (div ((class . "claim-text")) "a processor;") 
+ (div ((class . "claim-text")) "a content database configured to electronically store the digital content; and") 
+ (div ((class . "claim-text")) "a DRM packager, implemented at least in part in said processor, for adding a universal DRM layer to the digital content stored at said content database, wherein said universal DRM layer is able to access digital content in conformance with a plurality of different DRM implementations, said digital content being in conformance with one of said plurality of different DRM implementations."))))
 
+ (div ((class . claim-dependent)) (div ((id . CLM-00002) (num . 00002) (class . claim)) (div ((class . claim-text)) 2. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein said DRM packager is configured to encrypt the digital content based upon the universal DRM layer.))) (div ((class . claim-dependent)) (div ((id . CLM-00003) (num . 00003) (class . claim)) (div ((class . claim-text)) 3. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein said DRM packager is configured to tamper-proof or watermark the digital content.))) (div ((class . claim-dependent)) (div ((id . CLM-00004) (num . 00004) (class . claim)) (div ((class . claim-text)) 4. The content server of  (claim-ref ((idref . CLM-00002)) claim 2)  wherein said DRM packager is configured to tamper-proof or watermark the digital content.))) (div ((class . claim-dependent)) (div ((id . CLM-00005) (num . 00005) (class . claim)) (div ((class . claim-text)) 5. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein the DRM packager distributes the digital content over a computer network.))) (div ((class . claim-dependent)) (div ((id . CLM-00006) (num . 00006) (class . claim)) (div ((class . claim-text)) 6. The content server of  (claim-ref ((idref . CLM-00005)) claim 5)  wherein said computer network is the Internet.))) (div ((class . claim-dependent)) (div ((id . CLM-00007) (num . 00007) (class . claim)) (div ((class . claim-text)) 7. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein the content database and the DRM packager are in communication over a computer network.))) (div ((class . claim-dependent)) (div ((id . CLM-00008) (num . 00008) (class . claim)) (div ((class . claim-text)) 8. The content server of  (claim-ref ((idref . CLM-00007)) claim 7)  wherein said computer network is the Internet.))) (div ((class . claim-dependent)) (div ((id . CLM-00009) (num . 00009) (class . claim)) (div ((class . claim-text)) 9. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein the DRM packager further distributes a rights package to the user.))) (div ((class . claim-dependent)) (div ((id . CLM-00010) (num . 00010) (class . claim)) (div ((class . claim-text)) 10. The content server of  (claim-ref ((idref . CLM-00009)) claim 9)  wherein the rights package is bundled with the digital content.))) (div ((class . claim-dependent)) (div ((id . CLM-00011) (num . 00011) (class . claim)) (div ((class . claim-text)) 11. The content server of  (claim-ref ((idref . CLM-00009)) claim 9)  wherein the rights package includes a decryption key.))) (div ((class . claim-dependent)) (div ((id . CLM-00012) (num . 00012) (class . claim)) (div ((class . claim-text)) 12. The content server of  (claim-ref ((idref . CLM-00010)) claim 10)  wherein the rights package includes a decryption key.))) (div ((class . claim-dependent)) (div ((id . CLM-00013) (num . 00013) (class . claim)) (div ((class . claim-text)) 13. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein the digital content includes text-based information.))) (div ((class . claim-dependent)) (div ((id . CLM-00014) (num . 00014) (class . claim)) (div ((class . claim-text)) 14. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein the digital content includes audio information.))) (div ((class . claim-dependent)) (div ((id . CLM-00015) (num . 00015) (class . claim)) (div ((class . claim-text)) 15. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein the digital content include visual information.))) (div ((class . claim-dependent)) (div ((id . CLM-00016) (num . 00016) (class . claim)) (div ((class . claim-text)) 16. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein the digital content includes audio and visual information.))) (div ((class . claim-dependent)) (div ((id . CLM-00017) (num . 00017) (class . claim)) (div ((class . claim-text)) 17. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein the step of transmitting the digital content includes the step of transmitting the digital content as streaming media.))) (div ((class . claim-dependent)) (div ((id . CLM-00018) (num . 00018) (class . claim)) (div ((class . claim-text)) 18. The content server of  (claim-ref ((idref . CLM-00001)) claim 1)  wherein the DRM packager is configured, in response to a request from a client to receive the digital content in conformance with a first of the plurality of different DRM implementations, to distribute the digital content together with the universal DRM layer added to the digital content.))) (div ((class . claim)) (div ((id . CLM-00019) (num . 00019) (class . claim)) (div ((class . claim-text)) 19. A content server for storing and distributing digital content, comprising:
+ (div ((class . "claim-text")) "a processor;") 
+ (div ((class . "claim-text")) "a content database configured to electronically store the digital content; and") (div ((class . claim-text)) a DRM packager, implemented at least in part in said processor, for distributing to a client the digital content from said content database in conformance with a universal DRM implementation that can access digital content in conformance with a plurality of different DRM implementations,) (div ((class . claim-text)) wherein said DRM packager is configured to encrypt the digital content, to tamper-proof or watermark the digital content, and to distribute the digital content.)))) (div ((class . claim-dependent)) (div ((id . CLM-00020) (num . 00020) (class . claim)) (div ((class . claim-text)) 20. The content server of  (claim-ref ((idref . CLM-00019)) claim 19) , wherein the DRM packager bundles a rights package with the digital content prior to transmitting the digital content to the client, and wherein the rights package includes a decryption key for decrypting the digital content.))))))
 
