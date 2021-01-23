@@ -1,12 +1,17 @@
-;; google patent utility
-;; gp-util.el
+;;; gp-util.el --- Google Patent utilities
+
+;;  Auther:  Katsuhito Ishida <katsuhito.ishida@gmail.com>
+;;  Version: 0.1
+;;; Commentary:
+;;  This package provides a set of useful APIs for patent analysis.
+;; 
 ;; -*- coding: utf-8 -*-
 
 (require 'dom)
 (require 'request)
 
 (defcustom db-path "/var/db/patent/"
-  "full path to the directory where rawfiles are stored.")
+  "full path to the directory where rawfiles will be stored.")
 
 (defcustom rawfile-name "raw.html"
   "filename for the raw files.")
@@ -294,6 +299,7 @@
 
 
 ;; satitize function
+;; Thanks to https://qiita.com/t-suwa/items/20a4ebf37b0a57ff88b2
 (defun your-sanitize-function (dom &optional result)
   (push (nreverse
          (cl-reduce (lambda (acc object)
@@ -308,7 +314,5 @@
                         (your-sanitize-function object acc))))
                     dom :initial-value nil))
         result))
-
-;;(gp-get-patent "US6097367")
 
 (provide 'gp-util)
