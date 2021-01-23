@@ -240,47 +240,58 @@
   (mapconcat 'identity (nreverse (gp-abstract-renderer-1 dom nil)) ""))
 
 
-(defun gp-claim-text-renderer (dom)
-  "Receive claims as a dom and render it as text."
-    (format "#+begin_quote\n%s\n#+end_quote"
-	    (gp-claim-text-renderer-1 dom nil)
-    ))
+  (defun gp-claim-text-renderer (dom)
+    "Receive claims as a dom and render it as text."
+      (format "#+begin_quote\n%s\n#+end_quote\n"
+	      (nreverse (claim-text-renderer-1 dom nil))
+	      )
+      )
 
-(defun gp-claim-text-renderer-1 (dom result)
-  (cl-reduce (lambda (acc node)
-	       (cond ((stringp node) (cons node acc))
-		     ((listp node) (cond ((eq (car node) 'div) (gp-claim-text-renderer-1 (cddr node) acc))))
-		     (t acc)))
-	     dom :initial-value nil
-	     ))
-			     
+;;(claims-renderer (gp-get-claims patent-number))
+;; domはcl-reduceに渡される．そのとき各要素nodeがdomとして処理できるように，domを含むリストでなければならない  
+  (defun gp-claim-text-renderer-1 (dom result)
+    (append (cl-reduce (lambda (acc object)
+        (cond ((atom object) acc)
+	      ((listp object) 
+	      (cond 
+                    ((consp (car object)) acc)
+		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim"))      
+                                                     (gp-claim-text-renderer-1 (dom-children object) acc ))
+		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim-text")) 
+		                                     (gp-claim-text-renderer-1 (dom-children object) (cons (format "%s\n" (dom-texts object)) acc)))
+		    ((eq (dom-tag object) 'div)             (gp-claim-text-renderer-1 (dom-children object) acc))
+		    (t acc)))))
 
-(defun gp-claims-renderer-1 (dom result)
-  (append
-   (cl-reduce 
-
-    (lambda (acc object) 
-      (cond 
-       ((and (listp object) (symbolp (car object)))
-	(cond 
-	 ( (eq (car object) 'h2) (cons (format "** %s\n"  (dom-texts object)) acc) )	 
-	 ( (eq (car object) 'heading) (cons (format "*** %s\n" (nth 2 object)) acc) )
-	 ( (eq (car object) 'claim-statement) (cons (format "%s\n" (nth 2 object)) acc) )	 
-	 ( (and (eq (car object) 'div) (eq (car (car (car (cdr object)))) 'id ))
-	   (cons (format "%s\n" (gp-claim-text-renderer object)) acc) )
-	 ( t (gp-claims-renderer-1 object acc ))
-	 ( t acc)
-	 ))
-       (t acc)))
-	      
-    dom :initial-value nil
-    ) ;; cl-reduce
-   result) ;;append
-  );; defun
+		    dom :initial-value nil
+		       )
+	    result))
 
 
-(defun gp-claims-renderer (dom)
-  (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
+  (defun gp-claims-renderer-1 (dom result)
+
+    (append
+     (cl-reduce 
+
+      (lambda (acc object) 
+        (cond ((atom object) acc)
+	      ((listp object) 
+	      (cond 
+                    ((consp (car object)) acc)
+                    ((eq (dom-tag object) 'h2)              (cons (format "** %s\n"  (dom-children object)) acc)) 
+		    ((eq (dom-tag object) 'claim-statement) (gp-claims-renderer-1 (dom-children object) (cons (format "%s\n" (dom-children object)) acc)))
+		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim")) (cons (gp-claim-text-renderer (dom-children object)) acc))
+		    ((eq (dom-tag object) 'div)             (gp-claims-renderer-1 (dom-children object) acc))
+		    (t acc)))))
+		    
+       dom :initial-value nil
+      ) ;; cl-reduce
+     result) ;;append
+    );; defun
+   
+
+  (defun gp-claims-renderer (dom)
+    (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
+
 
 ;; satitize function
 (defun your-sanitize-function (dom &optional result)
