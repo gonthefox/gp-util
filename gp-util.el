@@ -122,8 +122,8 @@
 (defun gp-get-ifi-Status (patent-number)
   (gp-get-metadata-item patent-number "ifiStatus"))
 
-(defun gp-get-representatitive-publication (patent-number)
-  (gp-get-metadata-item patent-number "representatitivePublication"))
+(defun gp-get-representative-publication (patent-number)
+  (gp-get-metadata-item patent-number "representativePublication"))
 
 (defun gp-get-pripmary-language (patent-number)
   (gp-get-metadata-item patent-number "primaryLanguage"))
@@ -183,6 +183,12 @@
 (defun gp-get-application (patent-number)
   (gp-get-section patent-number "application")
   )
+
+;; other metadata outside of meta section
+(defun gp-get-inventor (patent-number)
+  "Get the inventor name"
+  (let ((dd-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'dd)))
+    (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) "inventor") s a)) dd-list :initial-value nil)))
 
 (defun gp-paragraph-renderer (dom)
   "Receive a paragraph as a dom and render it as text."
@@ -314,5 +320,17 @@
                         (your-sanitize-function object acc))))
                     dom :initial-value nil))
         result))
+
+;; gp-print-specification
+(defun gp-print-specification (patent-number)
+  "Print specification as HTML"
+  (with-temp-buffer
+    (insert (format "#+title: %s\n" (nth 2 (gp-get-title patent-number))))
+    (insert (format "#+subtitle: %s\n" (nth 2 (gp-get-representative-publication patent-number))))
+    (insert (format "#+author: %s\n" (nth 2 (gp-get-inventor patent-number))))
+    (insert (format "#+date: %s\n" (nth 2 (gp-get-filing-date patent-number))))
+    (buffer-string)))
+
+
 
 (provide 'gp-util)
