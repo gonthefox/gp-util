@@ -207,8 +207,8 @@
       (cond 
        ((and (listp object) (symbolp (car object)))
 	(cond 
-	 ( (eq (car object) 'h2) (cons (format "** %s\n" (nth 2 object)) acc) )
-	 ( (eq (car object) 'heading) (cons (format "*** %s\n" (nth 2 object)) acc) )
+	 ( (eq (car object) 'h2) (cons (format "* %s\n" (nth 2 object)) acc) )
+	 ( (eq (car object) 'heading) (cons (format "** %s\n" (nth 2 object)) acc) )
 	 ( (eq (car object) 'p) (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
 	 ( t (gp-description-renderer-1 (cddr object) acc ))
 	 ( t acc)
@@ -233,8 +233,8 @@
       (cond 
        ((and (listp object) (symbolp (car object)))
 	(cond 
-	 ( (eq (car object) 'h2) (cons (format "** %s\n" (nth 2 object)) acc) )
-	 ( (eq (car object) 'heading) (cons (format "*** %s\n" (nth 2 object)) acc) )
+	 ( (eq (car object) 'h2) (cons (format "* %s\n" (nth 2 object)) acc) )
+	 ( (eq (car object) 'heading) (cons (format "** %s\n" (nth 2 object)) acc) )
 	 ( (and (eq (car object) 'div) (eq (car (car (car (cdr object)))) 'num ))
 	   (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
 	 ( t (gp-abstract-renderer-1 (cddr object) acc ))
@@ -254,7 +254,7 @@
   (defun gp-claim-text-renderer (dom)
     "Receive claims as a dom and render it as text."
       (format "#+begin_quote\n%s\n#+end_quote\n"
-	      (nreverse (claim-text-renderer-1 dom nil))
+	      (nreverse (gp-claim-text-renderer-1 dom nil))
 	      )
       )
 
@@ -288,7 +288,7 @@
 	      ((listp object) 
 	      (cond 
                     ((consp (car object)) acc)
-                    ((eq (dom-tag object) 'h2)              (cons (format "** %s\n"  (dom-children object)) acc)) 
+                    ((eq (dom-tag object) 'h2)              (cons (format "* %s\n"  (dom-children object)) acc)) 
 		    ((eq (dom-tag object) 'claim-statement) (gp-claims-renderer-1 (dom-children object) (cons (format "%s\n" (dom-children object)) acc)))
 		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim")) (cons (gp-claim-text-renderer (dom-children object)) acc))
 		    ((eq (dom-tag object) 'div)             (gp-claims-renderer-1 (dom-children object) acc))
@@ -325,12 +325,15 @@
 (defun gp-print-specification (patent-number)
   "Print specification as HTML"
   (with-temp-buffer
-    (insert (format "#+title: %s\n" (nth 2 (gp-get-title patent-number))))
-    (insert (format "#+subtitle: %s\n" (nth 2 (gp-get-representative-publication patent-number))))
+    (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
+		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))
+    (insert (format "#+html: <h2 style=\"text-align: center;\">%s</h2>\n" (dom-text (gp-get-representative-publication patent-number))))
     (insert (format "#+author: %s\n" (nth 2 (gp-get-inventor patent-number))))
     (insert (format "#+date: %s\n" (nth 2 (gp-get-filing-date patent-number))))
+    (insert (gp-abstract-renderer (gp-get-abstract patent-number)))
+    (insert (gp-description-renderer (gp-get-description patent-number)))
+    (insert (gp-claims-renderer (gp-get-claims patent-number)))        
     (buffer-string)))
-
 
 
 (provide 'gp-util)
