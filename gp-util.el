@@ -209,6 +209,8 @@
 	(cond 
 	 ( (eq (car object) 'h2) (cons (format "* %s\n" (nth 2 object)) acc) )
 	 ( (eq (car object) 'heading) (cons (format "** %s\n" (nth 2 object)) acc) )
+	 ( (and (eq (car object) 'div) (string= (dom-attr object 'class) "description-line")) 
+	       (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
 	 ( (eq (car object) 'p) (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
 	 ( t (gp-description-renderer-1 (cddr object) acc ))
 	 ( t acc)
