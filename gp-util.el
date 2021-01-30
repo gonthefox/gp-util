@@ -196,7 +196,10 @@
     ;;    (format "#+begin_quote\n[%s]\n%s\n#+end_quote"
     ;;    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string)) (dom-text dom))
     (format "#+begin_quote\n[%s]\n%s\n#+end_quote"
-	    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string)) (dom-children dom))    
+	    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string))
+	    (replace-regexp-in-string (concat "\(\\s-*[b]\\s-*" (regexp-quote "nil") "\\s-*\\([0-9]+\\)+\\.?\\s-*\)") "*\\1*" (format "%s" (dom-children dom)))
+	    )
+;;	    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string)) (nth 0 (dom-children dom)))    	    
     ))
 
 (defun gp-description-renderer-1 (dom result)
@@ -255,7 +258,7 @@
   (mapconcat 'identity (nreverse (gp-abstract-renderer-1 dom nil)) ""))
 
 
-  (defun gp-claim-text-renderer (dom)
+(defun gp-claim-text-renderer (dom)
     "Receive claims as a dom and render it as text."
       (format "#+begin_quote\n%s\n#+end_quote\n"
 	      (nreverse (gp-claim-text-renderer-1 dom nil))
