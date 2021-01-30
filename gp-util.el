@@ -26,6 +26,10 @@
   "Return the full path to a rawfile store."
   (concat db-path patent-number "/"))
 
+(defun gp-full-path-to-images-store (patent-number)
+  "Return the full path to a images store."
+  (concat db-path patent-number "/images/"))
+
 (defun gp-full-path-to-rawfile (patent-number)
   "Return the full path to a raw file."
   (concat (gp-full-path-to-rawfile-store patent-number) rawfile-name))
@@ -76,7 +80,8 @@
 (defun gp-retrieve-and-store-patent (PATENT-NUMBER)
   "Retrieve a patent specified by PATENT-NUMBER from Google Patent 
    and transform into a dom tree"
-  (gp-retrieve-and-store-patent-wget patent-number))
+  (gp-retrieve-and-store-patent-wget patent-number)
+  (gp-retrieve-and-store-patent-images-wget patent-number))
 
 (defun gp-retrieve-and-store-patent-wget (patent-number)
   "Retrieve a patent from Google patents and store it in DB-PATH as RAWFILE-NAME"
@@ -85,8 +90,9 @@
 	(file  (gp-full-path-to-rawfile patent-number)))
     (unless (file-exists-p file)
       (unless (file-exists-p store) (make-directory store t))
-      (async-shell-command
-       (mapconcat #'shell-quote-argument
+;      (async-shell-command
+      (call-process-shell-command
+      (mapconcat #'shell-quote-argument
 		  (list wget-program url "-O" file) " ")))))
 
 (defun gp-get-patent-as-dom-1 (patent-number)
@@ -307,9 +313,33 @@
     );; defun
    
 
-  (defun gp-claims-renderer (dom)
-    (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
+(defun gp-claims-renderer (dom)
+  (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
 
+;; imagesを取得しDBに保存
+(defun gp-retrieve-and-store-patent-images-wget (patent-number)
+  "Retrieve a images from Google patents and store it in DB-PATH/images"
+  (let ((image-urls (gp-get-image-urls patent-number))
+        (store (gp-full-path-to-images-store patent-number)))
+	(unless (file-exists-p store) (make-directory store t))
+	(while image-urls
+              (setq file (file-name-nondirectory (car image-urls)))
+;	      (async-shell-command これだとうまくいかない
+              (call-process-shell-command
+	              (mapconcat #'shell-quote-argument
+		      (list wget-program (car image-urls) "-O" 
+		      (concat store file)
+		      ) " "))
+		      (setq image-urls (cdr image-urls)))
+		      ))
+
+(defun gp-get-image-urls (patent-number)
+     (let ((meta-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'meta))
+          (acc nil))
+          (while meta-list
+	        (when (string= (dom-attr (car meta-list) 'itemprop) "full") (setq acc (cons (dom-attr (car meta-list) 'content)  acc)))
+		 (setq meta-list (cdr meta-list)))
+		 acc))
 
 ;; satitize function
 ;; Thanks to https://qiita.com/t-suwa/items/20a4ebf37b0a57ff88b2
