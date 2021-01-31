@@ -4,10 +4,6 @@
 <div class=\"banner\">
 <a id=\"name\">Google patents utility</a><br />
 <a href=\"./about.html\"> about this site </a> | <a href=\"index.html\"> archive </a> | <a href=\"theindex.html\"> index </a></div>
-<div class=\"title\"><h1>%t</h1></div>
-<div class=\"date\">inventor<br />%a</div>
-<br />
-<div class=\"date\">filing date<br />%d</div>
 "))))
 
 (custom-set-variables
@@ -48,8 +44,8 @@ s.setAttribute('data-timestamp', +new Date());
 	 :section-numbers t
 	 :with-author nil
 	 :with-date nil
-	 :with-toc t
-	 :with-title nil
+	 :with-toc nil
+	 :With-title nil
 	 :html-validation-link nil
 	 :html-head-include-default-style nil
 	 :makeindex  nil
