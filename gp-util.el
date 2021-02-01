@@ -22,6 +22,9 @@
 (defcustom wget-program "/usr/bin/wget"
   "path for wget")
 
+(defcustom copy-program "/bin/cp"
+  "path for cp")
+
 (defun gp-full-path-to-rawfile-store (patent-number)
   "Return the full path to a rawfile store."
   (concat db-path patent-number "/"))
@@ -81,7 +84,8 @@
   "Retrieve a patent specified by PATENT-NUMBER from Google Patent 
    and transform into a dom tree"
   (gp-retrieve-and-store-patent-wget patent-number)
-  (gp-retrieve-and-store-patent-images-wget patent-number))
+  (gp-retrieve-and-store-patent-images-wget patent-number)
+  (gp-create-image-aliases patent-number))
 
 (defun gp-retrieve-and-store-patent-wget (patent-number)
   "Retrieve a patent from Google patents and store it in DB-PATH as RAWFILE-NAME"
@@ -350,11 +354,11 @@
 
 (defun gp-get-image-urls (patent-number)
      (let ((meta-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'meta))
-          (acc nil))
-          (while meta-list
-	        (when (string= (dom-attr (car meta-list) 'itemprop) "full") (setq acc (cons (dom-attr (car meta-list) 'content)  acc)))
-		 (setq meta-list (cdr meta-list)))
-		 acc))
+	   (acc nil))
+       (while meta-list
+	 (when (string= (dom-attr (car meta-list) 'itemprop) "full") (setq acc (cons (dom-attr (car meta-list) 'content)  acc)))
+	 (setq meta-list (cdr meta-list)))
+       acc))
 
 ;; satitize function
 ;; Thanks to https://qiita.com/t-suwa/items/20a4ebf37b0a57ff88b2
@@ -373,9 +377,44 @@
                     dom :initial-value nil))
         result))
 
+
+(defun gp-create-image-aliases (patent-number)
+  (with-temp-buffer
+  (let ((image-urls (gp-get-image-urls patent-number))
+        (figrefs    (gp-get-figrefs patent-number))
+        (acc nil))
+     (while image-urls
+            (setq acc (cons (file-name-nondirectory (car image-urls)) acc))
+	    (setq image-urls (cdr image-urls)))
+     (while acc
+            (insert (format "#+link: %s file:./figs/%s\n" (car figrefs) (car acc)))
+	    (setq figrefs (cdr figrefs))
+	    (setq acc (cdr acc)))
+     (write-region (point-min) (point-max) "./image-aliases.org"))))
+
+(defun gp-get-figrefs (patent-number)
+     (let ((figref-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'figref))
+           (acc  nil))
+       (while figref-list
+         (setq acc (cons 
+                    (replace-regexp-in-string (concat (regexp-quote "FIG.") "\\s-*\\([0-9]+\\)") "FIGREF-\\1" (dom-text (car figref-list))) acc))
+	 (setq figref-list (cdr figref-list)))
+	 (setq acc (cons "FIGREF-0" acc))
+	 (delete-dups acc)))
+
+(defun gp-import-figs-from-db (patent-number)
+      (let ((image-store   (gp-full-path-to-images-store patent-number))
+            (rawfile-store (gp-full-path-to-rawfile-store patent-number))
+	    (local-image-store "./figs/"))
+	    (unless (file-exists-p local-image-store) (make-directory local-image-store t))
+	    (call-process-shell-command
+	          (mapconcat #'shell-quote-argument
+		      (list copy-program "-r" (concat image-store ".") (concat local-image-store ".")) " "))))
+
 ;; gp-print-specification
 (defun gp-print-specification (patent-number)
   "Print specification as HTML"
+  (gp-import-figs-from-db patent-number)
   (with-temp-buffer
     (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
 		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))
@@ -384,6 +423,7 @@
     (insert (format "#+date: %s\n" (nth 2 (gp-get-filing-date patent-number))))
     (insert (format "#+options: toc:nil\n"))
     (insert (format "#+TOC: headlines 2\n"))
+    (insert (format "#+include: \"image-aliases.org\" "))
     (insert (gp-abstract-renderer (gp-get-abstract patent-number)))
     (insert (gp-description-renderer (gp-get-description patent-number)))
     (insert (gp-claims-renderer (gp-get-claims patent-number)))        
