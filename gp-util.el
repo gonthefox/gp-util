@@ -199,14 +199,29 @@
 (defun gp-paragraph-renderer (dom)
   "Receive a paragraph as a dom and render it as text."
   (let (( num-string (dom-attr dom 'num)))
-    ;;    (format "#+begin_quote\n[%s]\n%s\n#+end_quote"
-    ;;    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string)) (dom-text dom))
     (format "#+begin_quote\n[%s]\n%s\n#+end_quote"
 	    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string))
-	    (replace-regexp-in-string (concat "\(\\s-*[b]\\s-*" (regexp-quote "nil") "\\s-*\\([0-9]+\\)+\\.?\\s-*\)") "*\\1*" (format "%s" (dom-children dom)))
+	    (gp-paragraph-replace-tag dom)
 	    )
-;;	    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string)) (nth 0 (dom-children dom)))    	    
     ))
+
+(defun gp-paragraph-replace-tag (dom)
+"Replace a tag into org deccoration"
+(let ((items (dom-children dom))
+      (acc nil))
+      (while items
+            (if (listp (car items))
+	        (cond ((eq (dom-tag (car items)) 'b)      
+                           (setq acc (cons (format "*%s*"        (dom-text (car items))) acc)))
+		      ((eq (dom-tag (car items)) 'figref) 
+                           (setq acc (cons (format "[[%s:][%s]]" 
+                           (replace-regexp-in-string (concat (regexp-quote "FIG.") "\\s-*\\([0-9]+\\)") "FIGREF-\\1" (dom-text (car items)))
+						  (dom-text (car items))) 
+			   acc)))
+		      (t  (setq acc (cons (format "%s" (car items)) acc))))
+	    (setq acc (cons (format "%s" (car items)) acc)))
+            (setq items (cdr items)))
+	    (nreverse acc)))
 
 (defun gp-description-renderer-1 (dom result)
   (append
