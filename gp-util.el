@@ -6,6 +6,8 @@
 ;;  This package provides a set of useful APIs for patent analysis.
 ;; 
 ;; -*- coding: utf-8 -*-
+;; (setq patent-number "JP2003085659A")
+;;
 
 (require 'dom)
 (require 'request)
@@ -18,6 +20,12 @@
 
 (defcustom gp-url "https://patents.google.com/patent/"
   "URL of Google Patents")
+
+(defcustom local-image-store "./figs"
+  "path to local store for image file")
+
+(defcustom db-image-store "./images"
+  "path to db store for image file")
 
 (defcustom wget-program "/usr/bin/wget"
   "path for wget")
@@ -203,10 +211,12 @@
 (defun gp-paragraph-renderer (dom)
   "Receive a paragraph as a dom and render it as text."
   (let (( num-string (dom-attr dom 'num)))
-    (format "#+begin_quote\n[%s]\n%s\n#+end_quote"
-	    (progn (string-match "[0-9]+" num-string) (match-string 0 num-string))
-	    (gp-paragraph-replace-tag dom)
-	    )
+    (if (stringp num-string)
+	(format "#+begin_quote\n[%s]\n%s\n#+end_quote"
+		(progn (string-match "[0-9]+" num-string) (match-string 0 num-string))
+		(gp-paragraph-replace-tag dom)
+		)
+      (format "#+begin_quote\n%s\n#+end_quote" (gp-paragraph-replace-tag dom)))
     ))
 
 (defun gp-paragraph-replace-tag (dom)
@@ -217,11 +227,15 @@
             (if (listp (car items))
 	        (cond ((eq (dom-tag (car items)) 'b)      
                            (setq acc (cons (format "*%s*"        (dom-text (car items))) acc)))
+
 		      ((eq (dom-tag (car items)) 'figref) 
                            (setq acc (cons (format "[[%s:][%s]]" 
                            (replace-regexp-in-string (concat (regexp-quote "FIG.") "\\s-*\\([0-9]+\\)") "FIGREF-\\1" (dom-text (car items)))
-						  (dom-text (car items))) 
-			   acc)))
+			   (dom-text (car items))) acc)))
+					   
+;		      ((eq (dom-tag (car items)) 'br) 
+;                           (setq acc (cons (format "\n") acc)))
+
 		      (t  (setq acc (cons (format "%s" (car items)) acc))))
 	    (setq acc (cons (format "%s" (car items)) acc)))
             (setq items (cdr items)))
@@ -265,12 +279,15 @@
 	(cond 
 	 ( (eq (car object) 'h2) (cons (format "* %s\n" (nth 2 object)) acc) )
 	 ( (eq (car object) 'heading) (cons (format "** %s\n" (nth 2 object)) acc) )
+
 	 ( (and (eq (car object) 'div) (eq (car (car (car (cdr object)))) 'num ))
 	   (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
+
 	 ( (and (eq (car object) 'div) (string= (dom-attr object 'class) "abstract")) 
 	       (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
+
 	 ( t (gp-abstract-renderer-1 (cddr object) acc ))
-	 ( t acc)
+;	 ( t acc)
 	 ))
        (t acc)))
 	      
@@ -404,12 +421,9 @@
 
 (defun gp-import-figs-from-db (patent-number)
       (let ((image-store   (gp-full-path-to-images-store patent-number))
-            (rawfile-store (gp-full-path-to-rawfile-store patent-number))
-	    (local-image-store "./figs/"))
-	    (unless (file-exists-p local-image-store) (make-directory local-image-store t))
-	    (call-process-shell-command
-	          (mapconcat #'shell-quote-argument
-		      (list copy-program "-r" (concat image-store ".") (concat local-image-store ".")) " "))))
+            (rawfile-store (gp-full-path-to-rawfile-store patent-number)))
+	    (unless (file-exists-p local-image-store) 
+	      (copy-directory image-store local-image-store))))
 
 ;; gp-print-specification
 (defun gp-print-specification (patent-number)
@@ -423,7 +437,7 @@
     (insert (format "#+date: %s\n" (nth 2 (gp-get-filing-date patent-number))))
     (insert (format "#+options: toc:nil\n"))
     (insert (format "#+TOC: headlines 2\n"))
-    (insert (format "#+include: \"image-aliases.org\" "))
+    (insert (format "#+include: \"image-aliases.org\" \n"))
     (insert (gp-abstract-renderer (gp-get-abstract patent-number)))
     (insert (gp-description-renderer (gp-get-description patent-number)))
     (insert (gp-claims-renderer (gp-get-claims patent-number)))        
