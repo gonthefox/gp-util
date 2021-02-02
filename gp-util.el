@@ -18,6 +18,9 @@
 (defcustom rawfile-name "raw.html"
   "filename for the raw files.")
 
+(defcustom image-aliases-name "image-aliases.org"
+  "filename for the image-aliases.")
+
 (defcustom gp-url "https://patents.google.com/patent/"
   "URL of Google Patents")
 
@@ -337,7 +340,7 @@
 	      ((listp object) 
 	      (cond 
                     ((consp (car object)) acc)
-                    ((eq (dom-tag object) 'h2)              (cons (format "* %s\n"  (dom-children object)) acc)) 
+                    ((eq (dom-tag object) 'h2)              (cons (format "* %s\n"  (gp-claims-count object)  ) acc)) 		    
 		    ((eq (dom-tag object) 'claim-statement) (gp-claims-renderer-1 (dom-children object) (cons (format "%s\n" (dom-children object)) acc)))
 		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim")) (cons (gp-claim-text-renderer (dom-children object)) acc))
 		    ((eq (dom-tag object) 'div)             (gp-claims-renderer-1 (dom-children object) acc))
@@ -348,6 +351,13 @@
      result) ;;append
     );; defun
    
+(defun gp-claims-count (dom)
+  (let ((children (dom-children dom))
+	(header (dom-text dom)))
+    (format "%s (%s)"
+	    (progn (string-match "[a-zA-Z]+" header) (match-string 0 header))
+	    (when (string= (dom-attr (nth 1 children) 'itemprop) "count") (dom-text (nth 1 children))))))
+
 
 (defun gp-claims-renderer (dom)
   (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
@@ -407,7 +417,7 @@
             (insert (format "#+link: %s file:./figs/%s\n" (car figrefs) (car acc)))
 	    (setq figrefs (cdr figrefs))
 	    (setq acc (cdr acc)))
-     (write-region (point-min) (point-max) "./image-aliases.org"))))
+     (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
 
 (defun gp-get-figrefs (patent-number)
      (let ((figref-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'figref))
@@ -420,15 +430,21 @@
 	 (delete-dups acc)))
 
 (defun gp-import-figs-from-db (patent-number)
-      (let ((image-store   (gp-full-path-to-images-store patent-number))
-            (rawfile-store (gp-full-path-to-rawfile-store patent-number)))
-	    (unless (file-exists-p local-image-store) 
-	      (copy-directory image-store local-image-store))))
+  (let ((image-store   (gp-full-path-to-images-store patent-number))
+	(rawfile-store (gp-full-path-to-rawfile-store patent-number)))
+    (unless (file-exists-p local-image-store) 
+      (copy-directory image-store local-image-store))))
 
+(defun gp-import-image-aliases-from-db (patent-number)
+  (let ((full-path-to-image-aliases (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name)))
+         (unless (file-exists-p full-path-to-image-aliases) (gp-create-image-aliases patent-number))
+	 (copy-file full-path-to-image-aliases "./" t)))
+  
 ;; gp-print-specification
 (defun gp-print-specification (patent-number)
   "Print specification as HTML"
   (gp-import-figs-from-db patent-number)
+  (gp-import-image-aliases-from-db patent-number)  
   (with-temp-buffer
     (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
 		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))
@@ -437,7 +453,7 @@
     (insert (format "#+date: %s\n" (nth 2 (gp-get-filing-date patent-number))))
     (insert (format "#+options: toc:nil\n"))
     (insert (format "#+TOC: headlines 2\n"))
-    (insert (format "#+include: \"image-aliases.org\" \n"))
+    (insert (format "#+include: \"%s\" \n" image-aliases-name))
     (insert (gp-abstract-renderer (gp-get-abstract patent-number)))
     (insert (gp-description-renderer (gp-get-description patent-number)))
     (insert (gp-claims-renderer (gp-get-claims patent-number)))        
