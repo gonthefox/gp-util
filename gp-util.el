@@ -211,16 +211,18 @@
   (let ((dd-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'dd)))
     (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) "inventor") s a)) dd-list :initial-value nil)))
 
+
 (defun gp-paragraph-renderer (dom)
   "Receive a paragraph as a dom and render it as text."
   (let (( num-string (dom-attr dom 'num)))
     (if (stringp num-string)
 	(format "#+begin_quote\n[%s]\n%s\n#+end_quote"
 		(progn (string-match "[0-9]+" num-string) (match-string 0 num-string))
-		(gp-paragraph-replace-tag dom)
+		(mapconcat 'identity (gp-paragraph-replace-tag dom) "")
 		)
-      (format "#+begin_quote\n%s\n#+end_quote" (gp-paragraph-replace-tag dom)))
-    ))
+      (format "#+begin_quote\n%s\n#+end_quote" 
+                (mapconcat 'identity (gp-paragraph-replace-tag dom) ""))
+    )))
 
 (defun gp-paragraph-replace-tag (dom)
 "Replace a tag into org deccoration"
@@ -310,25 +312,28 @@
 	      )
       )
 
+
 ;;(claims-renderer (gp-get-claims patent-number))
 ;; domはcl-reduceに渡される．そのとき各要素nodeがdomとして処理できるように，domを含むリストでなければならない  
   (defun gp-claim-text-renderer-1 (dom result)
     (append (cl-reduce (lambda (acc object)
-        (cond ((atom object) acc)
+        (cond ((atom object) (cons (format "%s" object) acc))
 	      ((listp object) 
 	      (cond 
                     ((consp (car object)) acc)
 		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim"))      
                                                      (gp-claim-text-renderer-1 (dom-children object) acc ))
 		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim-text")) 
-		                                     (gp-claim-text-renderer-1 (dom-children object) (cons (format "%s\n" (dom-texts object)) acc)))
+		                                     (gp-claim-text-renderer-1 (dom-children object) acc ))
+                    ((eq (dom-tag object) 'claim-ref) 
+                           (setq acc (cons (format "[[%s:][%s]]" (dom-attr object 'idref) (dom-text object)) acc)))
+
 		    ((eq (dom-tag object) 'div)             (gp-claim-text-renderer-1 (dom-children object) acc))
 		    (t acc)))))
 
 		    dom :initial-value nil
 		       )
 	    result))
-
 
   (defun gp-claims-renderer-1 (dom result)
 
