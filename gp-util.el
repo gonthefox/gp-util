@@ -211,6 +211,7 @@
   (let ((dd-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'dd)))
     (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) "inventor") s a)) dd-list :initial-value nil)))
 
+
 (defun gp-paragraph-renderer (dom)
   "Receive a paragraph as a dom and render it as text."
   (let (( num-string (dom-attr dom 'num)))
@@ -230,14 +231,12 @@
       (while items
             (if (listp (car items))
 	        (cond ((eq (dom-tag (car items)) 'b)      
-                           (setq acc (cons (format " *%s* "        (dom-text (car items))) acc)))
+                           (setq acc (cons (format "*%s*"        (dom-text (car items))) acc)))
 
 		      ((eq (dom-tag (car items)) 'figref) 
-		       (setq acc (cons
-
-				  (gp-replace-ref-style (dom-text (car items)))
-
-				  acc)))
+                           (setq acc (cons (format "[[%s:][%s]]" 
+                           (replace-regexp-in-string (concat (regexp-quote "FIG.") "\\s-*\\([0-9]+\\)") "FIGREF-\\1" (dom-text (car items)))
+			   (dom-text (car items))) acc)))
 					   
 ;		      ((eq (dom-tag (car items)) 'br) 
 ;                           (setq acc (cons (format "\n") acc)))
@@ -246,14 +245,6 @@
 	    (setq acc (cons (format "%s" (car items)) acc)))
             (setq items (cdr items)))
 	    (nreverse acc)))
-
-
-(defun gp-replace-ref-style (figref-text)
-     (cond ((string-match (concat (regexp-quote "FIG.")  "\\s-*\\([0-9]+[a-zA-Z]*\\)") figref-text) (format "[[FIGREF-%s:][%s]]" (match-string 1 figref-text) figref-text))
-	   ((string-match (concat (regexp-quote "FIGS.") "\\s-*\\([0-9]+[a-zA-Z]*\\)\\s-*" (regexp-quote "and") "\\s-*\\([0-9]+[a-zA-Z]*\\)") figref-text) 
-	    (format "%s ([[FIGREF-%s:][FIG. %s]] and [[FIGREF-%s:][FIG. %s]])"
-		    figref-text (match-string 1 figref-text) (match-string 1 figref-text) (match-string 2 figref-text) (match-string 2 figref-text)))
-	   (t nil)))
 
 (defun gp-description-renderer-1 (dom result)
   (append
@@ -439,39 +430,15 @@
 	    (setq acc (cdr acc)))
      (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
 
-(defun extract-number (figref)
-  (string-to-number (replace-regexp-in-string "FIGREF-\\([0-9]+\\)" "\\1" figref)))
-
-(defun extract-string (figref)
-  (replace-regexp-in-string "FIGREF-[0-9]+\\([a-zA-Z]\\)" "\\1" figref))
-
 (defun gp-get-figrefs (patent-number)
      (let ((figref-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'figref))
            (acc  nil))
        (while figref-list
-         (setq acc (gp-detect-ref-style (dom-text (car figref-list)) acc))
+         (setq acc (cons 
+                    (replace-regexp-in-string (concat (regexp-quote "FIG.") "\\s-*\\([0-9]+\\)") "FIGREF-\\1" (dom-text (car figref-list))) acc))
 	 (setq figref-list (cdr figref-list)))
 	 (setq acc (cons "FIGREF-0" acc))
-
-	 (sort (delete-dups acc)
-	       (lambda (s1 s2)
-		 (let ((a (extract-number s1))
-		       (b (extract-number s2)))
-		   (cond ((< a b) t)
-			 ((= a b)
-			  (let ((A (extract-string s1))
-				(B (extract-string s2)))
-			    (cond ((string< A B) t))
-			    ))))))))
-
-
-(defun gp-detect-ref-style (figref-text acc)
-     (cond ((string-match (concat (regexp-quote "FIG.")  "\\s-*\\([0-9]+[a-zA-Z]*\\)") figref-text) (cons (format "FIGREF-%s" (match-string 1 figref-text)) acc))
-	   ((string-match (concat (regexp-quote "FIGS.") "\\s-*\\([0-9]+[a-zA-Z]*\\)\\s-*" (regexp-quote "and") "\\s-*\\([0-9]+[a-zA-Z]*\\)") figref-text) 
-	   (progn (setq acc (cons (format "FIGREF-%s" (match-string 1 figref-text)) acc))
-	   (cons (format "FIGREF-%s" (match-string 2 figref-text)) acc)))
-	   (t nil)))
-
+	 (delete-dups acc)))
 
 (defun gp-import-figs-from-db (patent-number)
   (let ((image-store   (gp-full-path-to-images-store patent-number))
