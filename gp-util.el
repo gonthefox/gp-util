@@ -306,12 +306,10 @@
 
 
 (defun gp-claim-text-renderer (dom)
-    "Receive claims as a dom and render it as text."
-      (format "#+begin_quote\n%s\n#+end_quote\n"
-	      (nreverse (gp-claim-text-renderer-1 dom nil))
-	      )
-      )
-
+  "Receive claims as a dom and render it as text."
+  (format "#+begin_quote\n%s\n#+end_quote\n"
+	  (replace-regexp-in-string "^[0-9]+\.\\s-*\\(\\S-+\\)" "\\1" (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) ""))
+	  ))
 
 ;;(claims-renderer (gp-get-claims patent-number))
 ;; domはcl-reduceに渡される．そのとき各要素nodeがdomとして処理できるように，domを含むリストでなければならない  
@@ -326,7 +324,7 @@
 		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim-text")) 
 		                                     (gp-claim-text-renderer-1 (dom-children object) acc ))
                     ((eq (dom-tag object) 'claim-ref) 
-                           (setq acc (cons (format "[[%s:][%s]]" (dom-attr object 'idref) (dom-text object)) acc)))
+                           (setq acc (cons (format "[[%s][%s]]" (dom-attr object 'idref) (dom-text object)) acc)))
 
 		    ((eq (dom-tag object) 'div)             (gp-claim-text-renderer-1 (dom-children object) acc))
 		    (t acc)))))
@@ -346,8 +344,12 @@
 	      (cond 
                     ((consp (car object)) acc)
                     ((eq (dom-tag object) 'h2)              (cons (format "* %s\n"  (gp-claims-count object)  ) acc)) 		    
-		    ((eq (dom-tag object) 'claim-statement) (gp-claims-renderer-1 (dom-children object) (cons (format "%s\n" (dom-children object)) acc)))
-		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim")) (cons (gp-claim-text-renderer (dom-children object)) acc))
+		    ((eq (dom-tag object) 'claim-statement) (gp-claims-renderer-1 (dom-children object) (cons (format "%s\n" (dom-text object)) acc)))
+
+		    ((and (eq (dom-tag object) 'div) (assoc 'id (dom-attributes object)))
+		                                     (let  ((claim-id (dom-attr object 'id)))
+                                                            (setq acc (cons (format "** <<%s>> Claim %s\n" claim-id (gp-get-claim-id claim-id) ) acc))		    
+		                                            (cons (gp-claim-text-renderer (dom-children object)) acc)))
 		    ((eq (dom-tag object) 'div)             (gp-claims-renderer-1 (dom-children object) acc))
 		    (t acc)))))
 		    
@@ -355,7 +357,11 @@
       ) ;; cl-reduce
      result) ;;append
     );; defun
-   
+
+(defun gp-get-claim-id (text)
+  (string-match "\\([0-9]+\\)" text)
+  (int-to-string (string-to-number (match-string 1 text))))
+
 (defun gp-claims-count (dom)
   (let ((children (dom-children dom))
 	(header (dom-text dom)))
