@@ -94,9 +94,12 @@
 (defun gp-retrieve-and-store-patent (PATENT-NUMBER)
   "Retrieve a patent specified by PATENT-NUMBER from Google Patent 
    and transform into a dom tree"
-  (gp-retrieve-and-store-patent-wget patent-number)
-  (gp-retrieve-and-store-patent-images-wget patent-number)
-  (gp-create-image-aliases patent-number))
+  (and 
+   (gp-retrieve-and-store-patent-wget patent-number)
+   (gp-retrieve-and-store-patent-images-wget patent-number)
+   (gp-create-image-aliases patent-number)
+   (gp-create-image-embeded-files patent-number)
+  ))
 
 (defun gp-retrieve-and-store-patent-wget (patent-number)
   "Retrieve a patent from Google patents and store it in DB-PATH as RAWFILE-NAME"
@@ -415,7 +418,6 @@
                     dom :initial-value nil))
         result))
 
-
 (defun gp-create-image-aliases (patent-number)
   (with-temp-buffer
   (let ((image-urls (gp-get-image-urls patent-number))
@@ -429,6 +431,15 @@
 	    (setq figrefs (cdr figrefs))
 	    (setq acc (cdr acc)))
      (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
+
+(defun gp-create-image-embeded-files (patent-number)
+  (let ((figrefs (gp-get-figrefs patent-number)))
+    (while figrefs
+      (with-temp-buffer
+	(insert (format "#+attr_html: :style :width 450px;\n"))
+	(insert (format "[[%s:]]\n" (car figrefs)))
+	(write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) (format "%s.org" (downcase (car figrefs))))))
+      (setq figrefs (cdr figrefs)))))
 
 (defun gp-get-figrefs (patent-number)
      (let ((figref-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'figref))
@@ -450,12 +461,22 @@
   (let ((full-path-to-image-aliases (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name)))
          (unless (file-exists-p full-path-to-image-aliases) (gp-create-image-aliases patent-number))
 	 (copy-file full-path-to-image-aliases "./" t)))
-  
+
+(defun gp-import-image-embeded-files-from-db (patent-number)
+  (let ((figrefs (gp-get-figrefs patent-number)))
+    (while figrefs
+      (let ((target (concat (gp-full-path-to-rawfile-store patent-number) (format "%s.org" (downcase (car figrefs))))))
+	(if (file-exists-p target) (copy-file target "./" t) (gp-create-image-embeded-files patent-number)))
+      (setq figrefs (cdr figrefs)))))
+
 ;; gp-print-specification
 (defun gp-print-specification (patent-number)
   "Print specification as HTML"
-  (gp-import-figs-from-db patent-number)
-  (gp-import-image-aliases-from-db patent-number)  
+  (gp-get-patent patent-number)
+  (if (file-exists-p (gp-full-path-to-images-store patent-number))
+      (gp-import-figs-from-db patent-number))
+  (gp-import-image-aliases-from-db patent-number)
+  (gp-import-image-embeded-files-from-db patent-number)    
   (with-temp-buffer
     (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
 		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))
