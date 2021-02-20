@@ -469,24 +469,35 @@
 	(if (file-exists-p target) (copy-file target "./" t) (gp-create-image-embeded-files patent-number)))
       (setq figrefs (cdr figrefs)))))
 
-(defun gp-pretty-print-patent-number (patent-number)
-  (if (stringp patent-number)
-      (let (( country-code (progn (string-match "^[a-zA-Z]\\{2\\}" patent-number) (match-string 0 patent-number)))
-	    ( kind-code    (progn (string-match "[a-zA-Z][0-9]$" patent-number) (match-string 0 patent-number)))
-	    ( just-number  (progn (string-match "[0-9]+" patent-number) (match-string 0 patent-number))))
+  (defun gp-pretty-print-patent-number (patent-number)
+    (if (stringp patent-number)
+	(let (( country-code (if (string-match "^[a-zA-Z]\\{2\\}" patent-number) (match-string 0 patent-number) nil))
+	      ( kind-code    (if (string-match "[a-zA-Z][0-9]$" patent-number) (match-string 0 patent-number) nil))
+	      ( just-number  (if (string-match "[0-9]+" patent-number) (match-string 0 patent-number) nil)))
 
-	(setq acc nil)
-	(while (> (length just-number) 0)
-	  (if (>= (length just-number) 3)
-	      (progn 
-		(if (null acc) (setq acc (format "%s" (substring just-number (- (length just-number) 3) (length just-number))))
-		  (setq acc (format "%s,%s" (substring just-number (- (length just-number) 3) (length just-number)) acc)))
-		(setq just-number (substring just-number 0 (- (length just-number) 3))))
-	    (progn (setq acc (format "%s,%s" just-number acc)) (setq just-number nil))))
-	
-	(cond ((string= country-code "US") (format "%s %s %s" country-code acc kind-code ))))
+	  (cond ((string= country-code "US") 
+	                         (if (string= (substring kind-code 0 1) "A") 
+				 (format "%s %s %s" country-code (gp-pretty-print-us-application just-number) kind-code)
+                                 (format "%s %s %s" country-code (gp-pretty-print-usp just-number) kind-code )))
+	        (t patent-number)
+	  ))
 
-    patent-number))
+      patent-number))
+
+  (defun gp-pretty-print-usp (just-number)
+    (let ((acc nil))
+      (while (> (length just-number) 0)
+	(if (>= (length just-number) 3)
+	    (progn 
+	      (if (null acc) (setq acc (format "%s" (substring just-number (- (length just-number) 3) (length just-number))))
+		(setq acc (format "%s,%s" (substring just-number (- (length just-number) 3) (length just-number)) acc)))
+	      (setq just-number (substring just-number 0 (- (length just-number) 3))))
+	  (progn (setq acc (format "%s,%s" just-number acc)) (setq just-number nil))))) acc)
+
+  (defun gp-pretty-print-us-application (just-number)
+         (if (>= (length just-number) 4)
+	     (format "%s/%s" (substring just-number 0 4) (substring just-number 4 (length just-number)))
+	     just-number))
 
 ;; gp-print-specification
 (defun gp-print-specification (patent-number)
