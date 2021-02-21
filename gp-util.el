@@ -492,7 +492,8 @@
 	      (if (null acc) (setq acc (format "%s" (substring just-number (- (length just-number) 3) (length just-number))))
 		(setq acc (format "%s,%s" (substring just-number (- (length just-number) 3) (length just-number)) acc)))
 	      (setq just-number (substring just-number 0 (- (length just-number) 3))))
-	  (progn (setq acc (format "%s,%s" just-number acc)) (setq just-number nil))))) acc)
+	  (progn (setq acc (format "%s,%s" just-number acc)) (setq just-number nil))))
+      acc))
 
   (defun gp-pretty-print-us-application (just-number)
          (if (>= (length just-number) 4)
