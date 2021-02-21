@@ -219,7 +219,7 @@
   "Receive a paragraph as a dom and render it as text."
   (let (( num-string (dom-attr dom 'num)))
     (if (stringp num-string)
-	(format "#+begin_quote\n[%s]\n%s\n#+end_quote"
+	(format "#+name:%s\n#+begin_quote\n%s\n#+end_quote"
 		(progn (string-match "[0-9]+" num-string) (match-string 0 num-string))
 		(mapconcat 'identity (gp-paragraph-replace-tag dom) "")
 		)
