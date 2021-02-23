@@ -12,6 +12,8 @@
 (require 'dom)
 (require 'request)
 
+(require 'gp-util-claim-tree)
+
 (defcustom db-path "/var/db/patent/"
   "full path to the directory where rawfiles will be stored.")
 
