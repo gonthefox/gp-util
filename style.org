@@ -1,0 +1,25 @@
+#+begin_export html
+<style>
+.title {text-align: center;}
+.date  {text-align: center;}
+
+blockquote::before {
+content:attr(id);
+position:relative;
+color: gray;
+text-decoration: underline;
+left:-4em;
+top:1.5em;
+}
+blockquote {
+margin-top: 0;
+margin-left: 4em;
+text-indent: 0;
+}
+blockquote p {
+position:relative;
+margin-top: 0;
+text-align:justify;
+}
+</style>
+#+end_export
