@@ -1,57 +1,77 @@
 ;;; gp-util-claim.el
 
+;(defun gp-get-claim (patent-number claim-id)
+;  "Get a claim specified by claim-id from dom"
+;  ;;  (nth 0 (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text")))
+;  (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text"))  
+
+;(defun gp-get-claim-1 (patent-number claim-id)
+;  "Get a claim specified by claim-id from dom"
+;  (let ((div-list (dom-by-tag (gp-get-claims patent-number) 'div)))
+;    (cl-reduce (lambda (d a) (if (string= (dom-attr d 'id) (format "CLM-%05d" claim-id)) d a)) div-list :initial-value nil)))
+
+(defun gp-get-claim (patent-number claim-id)
+  "Get a claim specified by claim-id from dom"
+  (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text"))  
+
+(defun gp-get-claim-1 (patent-number claim-id)
+  "Get a claim specified by claim-id from dom"
+  (let ((div-list (dom-by-tag (gp-get-claims patent-number) 'div)))
+    (cl-reduce (lambda (d a) (if (string= (dom-attr d 'id) claim-id) d a)) div-list :initial-value nil)))
+
 (defun gp-claim-text-renderer (dom)
   "Receive claims as a dom and render it as text."
   (format "#+begin_quote\n%s\n#+end_quote\n"
 	  (replace-regexp-in-string "^[0-9]+\.\\s-*\\(\\S-+\\)" "\\1" (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) ""))
+;;	  (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) "")
 	  ))
 
 ;;(claims-renderer (gp-get-claims patent-number))
 ;; domはcl-reduceに渡される．そのとき各要素nodeがdomとして処理できるように，domを含むリストでなければならない  
-  (defun gp-claim-text-renderer-1 (dom result)
-    (append (cl-reduce (lambda (acc object)
-        (cond ((atom object) (cons (format "%s" object) acc))
-	      ((listp object) 
-	      (cond 
-                    ((consp (car object)) acc)
+(defun gp-claim-text-renderer-1 (dom result)
+  (append (cl-reduce (lambda (acc object)
+		       (cond ((atom object) (cons (format "%s" object) acc))
+			     ((listp object) 
+			      (cond 
+			       ((consp (car object)) acc)
 		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim"))      
-                                                     (gp-claim-text-renderer-1 (dom-children object) acc ))
+		     (gp-claim-text-renderer-1 (dom-children object) acc ))
 		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim-text")) 
 		                                     (gp-claim-text-renderer-1 (dom-children object) acc ))
                     ((eq (dom-tag object) 'claim-ref) 
-                           (setq acc (cons (format "[[%s][%s]]" (dom-attr object 'idref) (dom-text object)) acc)))
-
+		     (setq acc (cons (format "[[%s][%s]]" (dom-attr object 'idref) (dom-text object)) acc)))
+		    
 		    ((eq (dom-tag object) 'div)             (gp-claim-text-renderer-1 (dom-children object) acc))
 		    (t acc)))))
 
-		    dom :initial-value nil
-		       )
-	    result))
+		     dom :initial-value nil
+		     )
+	  result))
 
-  (defun gp-claims-renderer-1 (dom result)
+(defun gp-claims-renderer-1 (dom result)
 
-    (append
-     (cl-reduce 
+  (append
+   (cl-reduce 
 
-      (lambda (acc object) 
-        (cond ((atom object) acc)
-	      ((listp object) 
-	      (cond 
-                    ((consp (car object)) acc)
-                    ((eq (dom-tag object) 'h2)              (cons (format "* %s\n"  (gp-claims-count object)  ) acc)) 		    
-		    ((eq (dom-tag object) 'claim-statement) (gp-claims-renderer-1 (dom-children object) (cons (format "%s\n" (dom-text object)) acc)))
+    (lambda (acc object) 
+      (cond ((atom object) acc)
+	    ((listp object) 
+	     (cond 
+	      ((consp (car object)) acc)
+	      ((eq (dom-tag object) 'h2)              (cons (format "* %s\n"  (gp-claims-count object)  ) acc)) 		    
+	      ((eq (dom-tag object) 'claim-statement) (gp-claims-renderer-1 (dom-children object) (cons (format "%s\n" (dom-text object)) acc)))
 
-		    ((and (eq (dom-tag object) 'div) (assoc 'id (dom-attributes object)))
-		                                     (let  ((claim-id (dom-attr object 'id)))
-                                                            (setq acc (cons (format "** <<%s>> Claim %s\n" claim-id (gp-get-claim-id claim-id) ) acc))		    
-		                                            (cons (gp-claim-text-renderer (dom-children object)) acc)))
-		    ((eq (dom-tag object) 'div)             (gp-claims-renderer-1 (dom-children object) acc))
-		    (t acc)))))
+	      ((and (eq (dom-tag object) 'div) (assoc 'id (dom-attributes object)))
+	       (let  ((claim-id (dom-attr object 'id)))
+		 (setq acc (cons (format "** <<%s>> Claim %s\n" claim-id (gp-get-claim-id claim-id) ) acc))		    
+		 (cons (gp-claim-text-renderer (dom-children object)) acc)))
+	      ((eq (dom-tag object) 'div)             (gp-claims-renderer-1 (dom-children object) acc))
+	      (t acc)))))
 		    
-       dom :initial-value nil
-      ) ;; cl-reduce
-     result) ;;append
-    );; defun
+    dom :initial-value nil
+    ) ;; cl-reduce
+   result) ;;append
+  );; defun
 
 (defun gp-get-claim-id (text)
   (string-match "\\([0-9]+\\)" text)
@@ -128,18 +148,23 @@
 
 ;; rendering a claim tree
 (defun gp-claim-tree-renderer-asterisk-1 (claim-tree)
-       (insert (format "%s %s\n" (mapconcat 'identity depth "") (car claim-tree)))
-       (push "*" depth)
-       (dolist (elt (cdr claim-tree))
-               (if (listp elt) (gp-claim-tree-renderer-asterisk-1 elt)
-                               (insert (format "%s %s\n" (mapconcat 'identity depth "") elt))))
-			       (pop depth)
-			       )
+;;  (insert (format "%s claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id (car claim-tree))))
+  (insert (format "%s %s\n" (mapconcat 'identity depth "") (car claim-tree)))  
+  (insert (gp-claim-text-renderer (gp-get-claim patent-number (car claim-tree))))
+  (push "*" depth)
+  (dolist (elt (cdr claim-tree))
+    (if (listp elt) (gp-claim-tree-renderer-asterisk-1 elt)
+      (progn
+;;	(insert (format "%s claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id elt)))
+	(insert (format "%s %s\n" (mapconcat 'identity depth "") elt))	
+	(insert (gp-claim-text-renderer (gp-get-claim patent-number elt))))))
+  (pop depth))
+			       
 (defun gp-claim-tree-renderer-asterisk (claim-tree)
    (with-temp-buffer
      (let ((depth '("*")))
        (dolist (elt claim-tree)
-          (gp-claim-tree-renderer-1 elt)))
+          (gp-claim-tree-renderer-asterisk-1 elt)))
 	  (buffer-string)))
 
 (provide 'gp-util-claim-tree)

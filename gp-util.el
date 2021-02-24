@@ -12,7 +12,7 @@
 (require 'dom)
 (require 'request)
 
-(require 'gp-util-claim-tree)
+(load "gp-util-claim")
 
 (defcustom db-path "/var/db/patent/"
   "full path to the directory where rawfiles will be stored.")
@@ -154,33 +154,6 @@
 (defun gp-get-pripmary-language (patent-number)
   (gp-get-metadata-item patent-number "primaryLanguage"))
 
-;; claim group
-;; ちょっとダサい．cl-reduceを用いて書き直すべきか？
-(defun gp-get-claim-as-text (patent-number claim-id)
-  "Get an individual claim specified by patent-number and claim-id."
-  (let ((claim-list (gp-get-claim patent-number claim-id)))
-    (with-temp-buffer
-      (while claim-list
-	(let ((claim-list-2 (car claim-list)))
-	  (while claim-list-2
-	    (let ((cell (car claim-list-2)))
-	      (cond ((listp cell)
-		     (cond ((string= (dom-tag cell) "claim-ref") (insert (dom-text cell))))))
-	      (cond ((and (atom cell) (stringp cell)) (insert cell))))
-	    (setq claim-list-2 (cdr claim-list-2))))
-	(setq claim-list (cdr claim-list)))
-      (buffer-string))))
-
-(defun gp-get-claim (patent-number claim-id)
-  "Get a claim specified by claim-id from dom"
-  ;;  (nth 0 (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text")))
-  (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text"))  
-
-(defun gp-get-claim-1 (patent-number claim-id)
-  "Get a claim specified by claim-id from dom"
-(let ((div-list (dom-by-tag (gp-get-claims patent-number) 'div)))
-  (cl-reduce (lambda (d a) (if (string= (dom-attr d 'id) (format "CLM-%05d" claim-id)) d a)) div-list :initial-value nil)))
-
 ;; section group
 (defun gp-get-section (patent-number section-id)
   "Get a section specified by section-id from dom"
@@ -310,73 +283,6 @@
   (mapconcat 'identity (nreverse (gp-abstract-renderer-1 dom nil)) ""))
 
 
-(defun gp-claim-text-renderer (dom)
-  "Receive claims as a dom and render it as text."
-  (format "#+begin_quote\n%s\n#+end_quote\n"
-	  (replace-regexp-in-string "^[0-9]+\.\\s-*\\(\\S-+\\)" "\\1" (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) ""))
-	  ))
-
-;;(claims-renderer (gp-get-claims patent-number))
-;; domはcl-reduceに渡される．そのとき各要素nodeがdomとして処理できるように，domを含むリストでなければならない  
-  (defun gp-claim-text-renderer-1 (dom result)
-    (append (cl-reduce (lambda (acc object)
-        (cond ((atom object) (cons (format "%s" object) acc))
-	      ((listp object) 
-	      (cond 
-                    ((consp (car object)) acc)
-		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim"))      
-                                                     (gp-claim-text-renderer-1 (dom-children object) acc ))
-		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim-text")) 
-		                                     (gp-claim-text-renderer-1 (dom-children object) acc ))
-                    ((eq (dom-tag object) 'claim-ref) 
-                           (setq acc (cons (format "[[%s][%s]]" (dom-attr object 'idref) (dom-text object)) acc)))
-
-		    ((eq (dom-tag object) 'div)             (gp-claim-text-renderer-1 (dom-children object) acc))
-		    (t acc)))))
-
-		    dom :initial-value nil
-		       )
-	    result))
-
-  (defun gp-claims-renderer-1 (dom result)
-
-    (append
-     (cl-reduce 
-
-      (lambda (acc object) 
-        (cond ((atom object) acc)
-	      ((listp object) 
-	      (cond 
-                    ((consp (car object)) acc)
-                    ((eq (dom-tag object) 'h2)              (cons (format "* %s\n"  (gp-claims-count object)  ) acc)) 		    
-		    ((eq (dom-tag object) 'claim-statement) (gp-claims-renderer-1 (dom-children object) (cons (format "%s\n" (dom-text object)) acc)))
-
-		    ((and (eq (dom-tag object) 'div) (assoc 'id (dom-attributes object)))
-		                                     (let  ((claim-id (dom-attr object 'id)))
-                                                            (setq acc (cons (format "** <<%s>> Claim %s\n" claim-id (gp-get-claim-id claim-id) ) acc))		    
-		                                            (cons (gp-claim-text-renderer (dom-children object)) acc)))
-		    ((eq (dom-tag object) 'div)             (gp-claims-renderer-1 (dom-children object) acc))
-		    (t acc)))))
-		    
-       dom :initial-value nil
-      ) ;; cl-reduce
-     result) ;;append
-    );; defun
-
-(defun gp-get-claim-id (text)
-  (string-match "\\([0-9]+\\)" text)
-  (int-to-string (string-to-number (match-string 1 text))))
-
-(defun gp-claims-count (dom)
-  (let ((children (dom-children dom))
-	(header (dom-text dom)))
-    (format "%s (%s)"
-	    (progn (string-match "[a-zA-Z]+" header) (match-string 0 header))
-	    (when (string= (dom-attr (nth 1 children) 'itemprop) "count") (dom-text (nth 1 children))))))
-
-
-(defun gp-claims-renderer (dom)
-  (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
 
 ;; imagesを取得しDBに保存
 (defun gp-retrieve-and-store-patent-images-wget (patent-number)
