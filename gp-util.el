@@ -23,6 +23,9 @@
 (defcustom image-aliases-name "image-aliases.org"
   "filename for the image-aliases.")
 
+(defcustom style-name "style.org"
+  "filename for the stylesheet.")
+
 (defcustom gp-url "https://patents.google.com/patent/"
   "URL of Google Patents")
 
@@ -423,12 +426,14 @@
 		    (gp-pretty-print-patent-number (dom-text (gp-get-representative-publication patent-number)))))
     (insert (format "#+author: %s\n" (nth 2 (gp-get-inventor patent-number))))
     (insert (format "#+date: %s\n" (nth 2 (gp-get-filing-date patent-number))))
-    (insert (format "#+options: toc:nil\n"))
-    (insert (format "#+TOC: headlines 2\n"))
+    (insert (format "#+options: toc:nil H:5\n"))
+    (insert (format "#+TOC: headlines 5\n"))
     (insert (format "#+include: \"%s\" \n" image-aliases-name))
+    (insert (format "#+include: \"%s\" \n" style-name))    
     (insert (gp-abstract-renderer (gp-get-abstract patent-number)))
     (insert (gp-description-renderer (gp-get-description patent-number)))
-    (insert (gp-claims-renderer (gp-get-claims patent-number)))        
+    ;;    (insert (gp-claims-renderer (gp-get-claims patent-number)))
+    (insert (gp-claim-tree-renderer-asterisk (gp-make-claim-tree patent-number)))
     (buffer-string)))
 
 
