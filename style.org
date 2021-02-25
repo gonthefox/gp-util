@@ -2,7 +2,7 @@
 <style>
 .title {text-align: center;}
 .date  {text-align: center;}
-
+h3,h4,h5,h6,h7,h8,h9 {font-size: 1.125em; font-weight: normal}
 table {
     width: 100%;
 }
@@ -25,19 +25,19 @@ tbody tr:nth-child(odd) {
     background-color: #eee;
 }
 
-li ul li  {
+li ul li ul li  {
     list-style: none;
     margin-top: .5em;
     margin-bottom: .75em;
     margin-left: 48px;
 }
 
-li ul li  {
+li ul li ul li  {
     margin-bottom: .25em;
     position: relative;
 }
 
-li ul li::before {
+li ul li ul li::before {
     content: "";
     position: absolute;
     top: -0.5em;
@@ -47,11 +47,11 @@ li ul li::before {
     border-left: 1px solid #3972b2;
 }
 
-li ul li:last-child::before {
+li ul li ul li:last-child::before {
     height: calc(1em + .25em);
 }
 
-li ul li::after {
+li ul li ul li::after {
     content: "";
     position: absolute;
     top: .75em;

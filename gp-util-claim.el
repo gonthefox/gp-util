@@ -162,7 +162,7 @@
 			       
 (defun gp-claim-tree-renderer-asterisk (claim-tree)
    (with-temp-buffer
-     (let ((depth '("*")))
+     (let ((depth '("**")))
        (dolist (elt claim-tree)
           (gp-claim-tree-renderer-asterisk-1 elt)))
 	  (buffer-string)))
