@@ -71,8 +71,8 @@
     (insert (format "#+include: \"%s\" \n" style-name))    
     (insert (gp-abstract-renderer (gp-get-abstract patent-number)))
     (insert (gp-description-renderer (gp-get-description patent-number)))
-    ;;    (insert (gp-claims-renderer (gp-get-claims patent-number)))
-    (insert (gp-claim-tree-renderer-asterisk (gp-make-claim-tree patent-number)))
+    (insert (gp-claims-renderer (gp-get-claims patent-number)))
+;;    (insert (gp-claim-tree-renderer-asterisk (gp-make-claim-tree patent-number)))
     (buffer-string)))
 
 (provide 'gp-util-print)

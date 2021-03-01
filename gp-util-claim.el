@@ -1,17 +1,7 @@
 ;;; gp-util-claim.el
 
-;(defun gp-get-claim (patent-number claim-id)
-;  "Get a claim specified by claim-id from dom"
-;  ;;  (nth 0 (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text")))
-;  (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text"))  
-
-;(defun gp-get-claim-1 (patent-number claim-id)
-;  "Get a claim specified by claim-id from dom"
-;  (let ((div-list (dom-by-tag (gp-get-claims patent-number) 'div)))
-;    (cl-reduce (lambda (d a) (if (string= (dom-attr d 'id) (format "CLM-%05d" claim-id)) d a)) div-list :initial-value nil)))
-
 (defun gp-get-claim (patent-number claim-id)
-  "Get a claim specified by claim-id from dom"
+  "Get a claim specified by CLAIM-ID as string from dom"
   (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text"))  
 
 (defun gp-get-claim-1 (patent-number claim-id)
@@ -90,12 +80,11 @@
 (defun gp-claim-ref-detector (dom)
   (let ((acc nil))
     (cl-reduce (lambda (acc object)
-		 (cond ((atom object) acc)
-		       ((listp object) 
+		 (cond ((listp object) 
 			(cond 
 			 ((consp (car object)) acc)
 			 ((eq (dom-tag object) 'claim-ref) (cons (dom-attr object 'idref) acc))
-			 ((eq (dom-tag object) 'div)       (gp-claim-ref-detector (dom-children object)))
+			 ((eq (dom-tag object) 'div) (gp-claims-analyzer (dom-children object) acc))
 			 (t acc)))))
 
 	       dom :initial-value nil)))
@@ -106,15 +95,13 @@
    (cl-reduce 
     
     (lambda (acc object) 
-      (cond ((atom object) acc)
-	    ((listp object) 
-	     (cond 
-	      ((consp (car object)) acc)
-	      ((and (eq (dom-tag object) 'div) (assoc 'id (dom-attributes object)))
-	       (let  ((claim-id (dom-attr object 'id)))
-		 (cons (cons claim-id (gp-claim-ref-detector (dom-children object))) acc)))
-	      ((eq (dom-tag object) 'div)      (gp-claims-analyzer (dom-children object) acc))
-	      (t acc)))))
+      (if (listp object) 
+	      (cond 
+	       ((and (eq (dom-tag object) 'div) (assoc 'id (dom-attributes object)))
+		(cons (cons (dom-attr object 'id) (gp-claim-ref-detector (dom-children object))) acc))
+	       ((eq (dom-tag object) 'div) (gp-claims-analyzer (dom-children object) acc))
+	       (t acc))
+	acc))
 
     dom :initial-value nil
     ) ;; cl-reduce
@@ -156,7 +143,8 @@
     (if (listp elt) (gp-claim-tree-renderer-asterisk-1 elt)
       (progn
 ;;	(insert (format "%s claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id elt)))
-	(insert (format "%s %s\n" (mapconcat 'identity depth "") elt))	
+	(insert (format "%s %s\n" (mapconcat 'identity depth "") elt))
+	(insert (format "#+name: %s\n" elt))
 	(insert (gp-claim-text-renderer (gp-get-claim patent-number elt))))))
   (pop depth))
 			       
