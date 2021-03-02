@@ -1,9 +1,8 @@
 ;;; gp-util-claim.el
 
-
 (defun gp-get-claim (patent-number claim-id)
-  "Get a claim specified by claim-id from dom"
-  (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text"))
+  "Get a claim specified by CLAIM-ID as string from dom"
+  (dom-by-class (gp-get-claim-1 patent-number claim-id) "claim-text"))  
 
 (defun gp-get-claim-1 (patent-number claim-id)
   "Get a claim specified by claim-id from dom"
@@ -136,8 +135,9 @@
   (dolist (elt (cdr claim-tree))
     (if (listp elt) (gp-claim-tree-renderer-asterisk-1 elt)
       (progn
-	(insert (format "%s claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id elt)))
-;;	(insert (format "%s %s\n" (mapconcat 'identity depth "") elt))	
+;;	(insert (format "%s claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id elt)))
+	(insert (format "%s %s\n" (mapconcat 'identity depth "") elt))
+	(insert (format "#+name: %s\n" elt))
 	(insert (gp-claim-text-renderer (gp-get-claim patent-number elt))))))
   (pop depth))
 			       
