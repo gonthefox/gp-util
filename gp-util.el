@@ -348,7 +348,7 @@
   (let ((figrefs (gp-get-figrefs patent-number)))
     (while figrefs
       (with-temp-buffer
-	(insert (format "#+attr_html: :style :width 450px;\n"))
+	(insert (format "#+attr_html: :style transform:rotate(0deg) :width 450px\n"))
 	(insert (format "[[%s:]]\n" (car figrefs)))
 	(write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) (format "%s.org" (downcase (car figrefs))))))
       (setq figrefs (cdr figrefs)))))
