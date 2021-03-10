@@ -332,17 +332,13 @@
 
 (defun gp-create-image-aliases (patent-number)
   (with-temp-buffer
-  (let ((image-urls (gp-get-image-urls patent-number))
-        (figrefs    (gp-get-figrefs patent-number))
-        (acc nil))
-     (while image-urls
-            (setq acc (cons (file-name-nondirectory (car image-urls)) acc))
-	    (setq image-urls (cdr image-urls)))
-     (while acc
-            (insert (format "#+link: %s file:./figs/%s\n" (car figrefs) (car acc)))
-	    (setq figrefs (cdr figrefs))
-	    (setq acc (cdr acc)))
-     (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
+  (let ((image-files (reverse (mapcar #'file-name-nondirectory (gp-get-image-urls patent-number))))
+        (figrefs     (reverse (gp-get-figrefs patent-number))))
+    (while image-files
+      (insert (format "#+link: %s file:./figs/%s\n" (car figrefs) (car image-files)))
+      (setq figrefs (cdr figrefs))
+      (setq image-files (cdr image-files)))
+    (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
 
 (defun gp-create-image-embeded-files (patent-number)
   (let ((figrefs (gp-get-figrefs patent-number)))
@@ -355,12 +351,11 @@
 
 (defun gp-get-figrefs (patent-number)
      (let ((figref-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'figref))
-           (acc  nil))
+           (acc  (list "FIGREF-0")))
        (while figref-list
          (setq acc (cons 
                     (replace-regexp-in-string (concat (regexp-quote "FIG.") "\\s-*\\([0-9]+\\)") "FIGREF-\\1" (dom-text (car figref-list))) acc))
 	 (setq figref-list (cdr figref-list)))
-	 (setq acc (cons "FIGREF-0" acc))
 	 (delete-dups acc)))
 
 (provide 'gp-util)
