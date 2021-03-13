@@ -1,5 +1,12 @@
 ;; gp-util-print.el
 ;;
+(defun gp-full-path-to-pdf (patent-number)
+  (concat (gp-full-path-to-rawfile-store patent-number)
+	  (file-name-nondirectory (dom-attr (gp-get-link-item patent-number 'pdfLink) 'href))))
+
+(defun gp-import-pdf-from-db (patent-number)
+  (let ((full-path-to-pdf (gp-full-path-to-pdf patent-number)))
+    (copy-file full-path-to-pdf "./" t)))
 
 (defun gp-import-figs-from-db (patent-number)
   (let ((image-store   (gp-full-path-to-images-store patent-number))
@@ -57,7 +64,9 @@
   (if (file-exists-p (gp-full-path-to-images-store patent-number))
       (gp-import-figs-from-db patent-number))
   (gp-import-image-aliases-from-db patent-number)
-  (gp-import-image-embeded-files-from-db patent-number)    
+  (gp-import-image-embeded-files-from-db patent-number)
+  (if (file-exists-p (gp-full-path-to-pdf patent-number))
+      (gp-import-pdf-from-db patent-number))
   (with-temp-buffer
     (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
 		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))

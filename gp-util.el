@@ -103,6 +103,7 @@
   (and 
    (gp-retrieve-and-store-patent-wget patent-number)
    (gp-retrieve-and-store-patent-images-wget patent-number)
+   (gp-retrieve-and-store-patent-pdf-wget patent-number)
    (gp-create-image-aliases patent-number)
    (gp-create-image-embeded-files patent-number)
   ))
@@ -131,6 +132,22 @@
 (defun gp-get-patent-as-dom (patent-number)
   (your-sanitize-function (gp-get-patent-as-dom-1 patent-number)))
 
+;; link group
+(defun gp-get-link-item (patent-number link-id)
+  "Get a link-item specified by link-id from a tag"
+(let ((a-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'a)))
+  (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) link-id) s a)) a-list :initial-value nil)))
+
+(defun gp-retrieve-and-store-patent-pdf-wget (patent-number)
+  (let* ((pdfLink (dom-attr (gp-get-link-item patent-number 'pdfLink) 'href))
+	 (store   (gp-full-path-to-rawfile-store patent-number))
+	 (file    (concat store (file-name-nondirectory pdfLink))))
+    (unless (file-exists-p file)
+      (unless (file-exists-p store) (make-directory store t))
+      (call-process-shell-command
+      (mapconcat #'shell-quote-argument
+		  (list wget-program pdfLink "-O" file) " ")))))
+    
 ;; metadata group
 (defun gp-get-metadata-item (patent-number metadata-id)
   "Get a metadata-item specified by metadata-id from metadata"
