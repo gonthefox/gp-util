@@ -132,19 +132,22 @@
 ;; rendering a claim tree
 (defun gp-claim-tree-renderer-asterisk-1 (claim-tree)
   (insert (format "%s claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id (car claim-tree))))
-  (insert (gp-claim-text-renderer (gp-get-claim patent-number (car claim-tree))))
-  (push "*" depth)
+;;  (insert (gp-claim-text-renderer (gp-get-claim patent-number (car claim-tree))))
+  (push "----------" depth)
   (dolist (elt (cdr claim-tree))
     (if (listp elt) (gp-claim-tree-renderer-asterisk-1 elt)
       (progn
 	(insert (format "%s claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id elt)))
-	(insert (format "#+name: %s\n" elt))
-	(insert (gp-claim-text-renderer (gp-get-claim patent-number elt))))))
+;;	(insert (format "#+name: %s\n" elt))
+;;	(insert (gp-claim-text-renderer (gp-get-claim patent-number elt)))
+	)
+      )
+    )
   (pop depth))
 			       
 (defun gp-claim-tree-renderer-asterisk (claim-tree)
    (with-temp-buffer
-     (let ((depth '("**")))
+     (let ((depth '("--")))
        (dolist (elt claim-tree)
           (gp-claim-tree-renderer-asterisk-1 elt)))
 	  (buffer-string)))
