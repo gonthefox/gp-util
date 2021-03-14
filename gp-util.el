@@ -103,6 +103,7 @@
   (and 
    (gp-retrieve-and-store-patent-wget patent-number)
    (gp-retrieve-and-store-patent-images-wget patent-number)
+   (gp-retrieve-and-store-patent-pdf-wget patent-number)
    (gp-create-image-aliases patent-number)
    (gp-create-image-embeded-files patent-number)
   ))
@@ -131,6 +132,22 @@
 (defun gp-get-patent-as-dom (patent-number)
   (your-sanitize-function (gp-get-patent-as-dom-1 patent-number)))
 
+;; link group
+(defun gp-get-link-item (patent-number link-id)
+  "Get a link-item specified by link-id from a tag"
+(let ((a-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'a)))
+  (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) link-id) s a)) a-list :initial-value nil)))
+
+(defun gp-retrieve-and-store-patent-pdf-wget (patent-number)
+  (let* ((pdfLink (dom-attr (gp-get-link-item patent-number 'pdfLink) 'href))
+	 (store   (gp-full-path-to-rawfile-store patent-number))
+	 (file    (concat store (file-name-nondirectory pdfLink))))
+    (unless (file-exists-p file)
+      (unless (file-exists-p store) (make-directory store t))
+      (call-process-shell-command
+      (mapconcat #'shell-quote-argument
+		  (list wget-program pdfLink "-O" file) " ")))))
+    
 ;; metadata group
 (defun gp-get-metadata-item (patent-number metadata-id)
   "Get a metadata-item specified by metadata-id from metadata"
@@ -332,17 +349,13 @@
 
 (defun gp-create-image-aliases (patent-number)
   (with-temp-buffer
-  (let ((image-urls (gp-get-image-urls patent-number))
-        (figrefs    (gp-get-figrefs patent-number))
-        (acc nil))
-     (while image-urls
-            (setq acc (cons (file-name-nondirectory (car image-urls)) acc))
-	    (setq image-urls (cdr image-urls)))
-     (while acc
-            (insert (format "#+link: %s file:./figs/%s\n" (car figrefs) (car acc)))
-	    (setq figrefs (cdr figrefs))
-	    (setq acc (cdr acc)))
-     (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
+  (let ((image-files (reverse (mapcar #'file-name-nondirectory (gp-get-image-urls patent-number))))
+        (figrefs     (reverse (gp-get-figrefs patent-number))))
+    (while image-files
+      (insert (format "#+link: %s file:./figs/%s\n" (car figrefs) (car image-files)))
+      (setq figrefs (cdr figrefs))
+      (setq image-files (cdr image-files)))
+    (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
 
 (defun gp-create-image-embeded-files (patent-number)
   (let ((figrefs (gp-get-figrefs patent-number)))
@@ -355,12 +368,29 @@
 
 (defun gp-get-figrefs (patent-number)
      (let ((figref-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'figref))
-           (acc  nil))
+           (acc  (list "FIGREF-0")))
        (while figref-list
          (setq acc (cons 
                     (replace-regexp-in-string (concat (regexp-quote "FIG.") "\\s-*\\([0-9]+\\)") "FIGREF-\\1" (dom-text (car figref-list))) acc))
 	 (setq figref-list (cdr figref-list)))
-	 (setq acc (cons "FIGREF-0" acc))
 	 (delete-dups acc)))
+
+
+;; below functions are for utility 
+;; list of doms only. if single dom is provided, the very first tag will be omitted. 
+(defun scan-dom-multi (result dom-list)
+  (reverse (cl-reduce #'scan-dom-single dom-list :initial-value nil)))
+
+;; single dom only. if list of doms is provided, nil will be produced.
+(defun scan-dom-single (acc dom)
+  (cond ((atom dom) acc)
+	((symbolp (car dom)) (setq acc (cons (dom-tag dom) acc)) 
+	 (let (( has-children (scan-dom-multi nil (dom-children dom)) )) 
+	   (if has-children (cons has-children acc) acc)))
+	(t acc)) 
+  )
+
+(defun scan-dom (dom-list)
+  (scan-dom-multi nil dom-list))
 
 (provide 'gp-util)

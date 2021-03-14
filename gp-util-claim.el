@@ -14,8 +14,8 @@
 (defun gp-claim-text-renderer (dom)
   "Receive claims as a dom and render it as text."
   (format "#+begin_quote\n%s\n#+end_quote\n"
-	  (replace-regexp-in-string "^\\([0-9]+\\)\.\\s-*\\(\\S-+\\)" "\\1. [@\\1] \\2" (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) ""))
-;;	  (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) "")
+	  (replace-regexp-in-string "^\\([0-9]+\\)\.\\s-*\\(\\S-+\\)" "Claim \\1. \\2" (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) ""))
+;;	  (replace-regexp-in-string "^\\([0-9]+\\)\.\\s-*\\(\\S-+\\)" "Cl.\\1. [@\\1] \\2" (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) ""));;	  (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) "")
 	  ))
 
 ;;(claims-renderer (gp-get-claims patent-number))
@@ -131,18 +131,17 @@
 
 ;; rendering a claim tree
 (defun gp-claim-tree-renderer-asterisk-1 (claim-tree)
-  (insert (format "%s claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id (car claim-tree))))
-;;  (insert (gp-claim-text-renderer (gp-get-claim patent-number (car claim-tree))))
-  (push "----------" depth)
+  (when (= (length depth) 1)
+    (insert (format "%s Independent claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id (car claim-tree)))))
+  (insert (format "#+name: %s\n" (gp-get-claim-id (car claim-tree))))
+  (insert (gp-claim-text-renderer (gp-get-claim patent-number (car claim-tree))))
+  (push "*" depth)
   (dolist (elt (cdr claim-tree))
     (if (listp elt) (gp-claim-tree-renderer-asterisk-1 elt)
       (progn
-	(insert (format "%s claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id elt)))
-;;	(insert (format "#+name: %s\n" elt))
-;;	(insert (gp-claim-text-renderer (gp-get-claim patent-number elt)))
-	)
-      )
-    )
+;;	(insert (format "%s Claim %s\n" (mapconcat 'identity depth "") (gp-get-claim-id elt)))
+	(insert (format "#+name: %s\n" (gp-get-claim-id elt)))
+	(insert (gp-claim-text-renderer (gp-get-claim patent-number elt))))))
   (pop depth))
 			       
 (defun gp-claim-tree-renderer-asterisk (claim-tree)
