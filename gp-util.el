@@ -375,4 +375,22 @@
 	 (setq figref-list (cdr figref-list)))
 	 (delete-dups acc)))
 
+
+;; below functions are for utility 
+;; list of doms only. if single dom is provided, the very first tag will be omitted. 
+(defun scan-dom-multi (result dom-list)
+  (reverse (cl-reduce #'scan-dom-single dom-list :initial-value nil)))
+
+;; single dom only. if list of doms is provided, nil will be produced.
+(defun scan-dom-single (acc dom)
+  (cond ((atom dom) acc)
+	((symbolp (car dom)) (setq acc (cons (dom-tag dom) acc)) 
+	 (let (( has-children (scan-dom-multi nil (dom-children dom)) )) 
+	   (if has-children (cons has-children acc) acc)))
+	(t acc)) 
+  )
+
+(defun scan-dom (dom-list)
+  (scan-dom-multi nil dom-list))
+
 (provide 'gp-util)
