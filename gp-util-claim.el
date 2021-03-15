@@ -80,39 +80,12 @@
 (defun gp-claims-renderer (dom)
   (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
 
-
-(defun gp-make-claim-pairs-1 (dom result)
-
-  (append
-   (cl-reduce 
-    (lambda (acc object)
-      (if (listp object) 
-	  (cond 
-	   ((and (eq (dom-tag object) 'div) (assoc 'id (dom-attributes object)))
-	    (cons
-	     (cons (dom-attr object 'id)
-		   (mapcar #'(lambda (object) (dom-attr object 'idref))
-			   (dom-by-tag object 'claim-ref))
-		   )
-	     acc))
-	   ((eq (dom-tag object) 'div) (gp-make-claim-pairs-1 object acc))
-	   (t acc))
-	acc))
-
-    dom :initial-value nil
-    ) ;; cl-reduce
-   result) ;;append
-  );; defun
-
 (defun gp-independent-claims (claim-pairs)
   (let ((indeps nil))
     (while claim-pairs
       (when (null (cdr (car claim-pairs))) (setq indeps (cons (car claim-pairs) indeps)))
       (setq claim-pairs (cdr claim-pairs))) 
     indeps))
-
-(defun gp-make-claim-pairs (patent-number)
-  (gp-make-claim-pairs-1 (gp-get-claims patent-number) nil))
 
 (defun gp-make-claim-tree-1 (claim-pairs indep-claim-pair)
   (let ((acc nil))
@@ -127,7 +100,7 @@
 	 (acc nil))
     (dolist (indep indeps)
       (setq acc (cons (gp-make-claim-tree-1 claim-pairs indep) acc)))
-    (reverse acc)  ))
+    (reverse acc) ))
 
 ;; rendering a claim tree
 (defun gp-claim-tree-renderer-asterisk-1 (claim-tree)
@@ -151,4 +124,41 @@
           (gp-claim-tree-renderer-asterisk-1 elt)))
 	  (buffer-string)))
 
+
+;; below functions are for utility 
+;; list of doms only. if single dom is provided, the very first tag will be omitted. 
+(defun gp-make-claim-pairs-multi (result dom-list)
+  (append (reverse (cl-reduce #'gp-make-claim-pairs-single dom-list :initial-value nil)) result))
+
+;; single dom only. if list of doms is provided, nil will be produced.
+(defun gp-make-claim-pairs-single (acc dom)
+  (cond ((atom dom) acc)
+	((symbolp (car dom))
+	 (cond ((and (eq (dom-tag dom) 'div) (assoc 'id (dom-attributes dom)))
+		(cons (cons (dom-attr dom 'id) (mapcar #'(lambda (dom) (dom-attr dom 'idref))(dom-by-tag dom 'claim-ref))) acc))
+	       ((gp-make-claim-pairs-multi acc (dom-children dom)))))
+	(t acc)) 
+  )
+
+(defun gp-make-claim-pairs-1 (dom-list)
+  (gp-make-claim-pairs-multi nil dom-list))
+
+(defun gp-make-claim-pairs (patent-number)
+  (gp-make-claim-pairs-1 (gp-get-claims patent-number)))
+
+
+(defun gp-make-claim-tree-new-1 (claim-pair acc)
+  (cond ;;(t "hello")
+	((null acc) (cons (list (car claim-pair)) acc))
+	((eq (car (car acc)) (car (cdr claim-pair)))
+	 (cons (car claim-pair) acc))
+	(t (cons (car acc) (gp-make-claim-tree-new-1 claim-pair (cdr acc))))))
+
+(defun gp-make-claim-tree-new (claim-pairs)
+  (let ((acc nil) (tree nil))
+    (dolist (claim-pair claim-pairs acc)
+      (setq acc (gp-make-claim-tree-new-1 claim-pair acc))  )))
+
+(gp-make-claim-tree-new '((CLM-00001) (CLM-00002 CLM-00001) (CLM-00003 CLM-00001) (CLM-00004 CLM-00002) (CLM-00005 CLM-00001) (CLM-00006 CLM-00005) (CLM-00007 CLM-00001) (CLM-00008 CLM-00007) (CLM-00009 CLM-00001) (CLM-00010 CLM-00009) (CLM-00011 CLM-00009) (CLM-00012 CLM-00010) (CLM-00013 CLM-00001) (CLM-00014 CLM-00001) (CLM-00015 CLM-00001) (CLM-00016 CLM-00001) (CLM-00017 CLM-00001) (CLM-00018 CLM-00001) (CLM-00019) (CLM-00020 CLM-00019))) 
+  
 (provide 'gp-util-claim-tree)
