@@ -1,5 +1,11 @@
 ;; gp-util-print.el
 ;;
+(defcustom gp-style-file "/var/db/patent/config/style.org"
+  "full path to the directory where style.org will be stored.")
+
+(defun gp-import-style-file ()
+  (copy-file gp-style-file "./" t))
+
 (defun gp-full-path-to-pdf (patent-number)
   (concat (gp-full-path-to-rawfile-store patent-number)
 	  (file-name-nondirectory (dom-attr (gp-get-link-item patent-number 'pdfLink) 'href))))
@@ -67,6 +73,7 @@
   (gp-import-image-embeded-files-from-db patent-number)
   (if (file-exists-p (gp-full-path-to-pdf patent-number))
       (gp-import-pdf-from-db patent-number))
+  (gp-import-style-file)
   (with-temp-buffer
     (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
 		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))
