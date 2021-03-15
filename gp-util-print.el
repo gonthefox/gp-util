@@ -75,6 +75,7 @@
       (gp-import-pdf-from-db patent-number))
   (gp-import-style-file)
   (with-temp-buffer
+    (insert (format "#+html: <a href=\"%s\">PDF<a/>\n" (file-name-nondirectory (gp-full-path-to-pdf patent-number))))
     (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
 		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))
     (insert (format "#+html: <h2 style=\"text-align: center;\">%s</h2>\n"
