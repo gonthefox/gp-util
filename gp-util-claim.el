@@ -150,25 +150,24 @@
 	  (buffer-string)))
 
 
-(defun update-node (node x y)
+(defun update-node (node new ref)
   (cond
    ((null node) nil)
-   ((string= (car node) x)
+   ((string= (car node) ref)
     (cond ((null (cdr node))  ;; no children
-	   (setcdr node (list (list y))) node) 
+	   (setcdr node (list (list new))) node) 
 	  ((null (cddr node)) ;; having just one child
-	   (if (string= (caadr node) y) node
-	     (setcdr (cdr node) (list (list (list y)))) node))
+	   (if (string= (caadr node) new) node
+	     (setcdr (cdr node) (list (list (list new)))) node))
 	  ;; having more than one children
-	  (t (setcdr (last (caddr node)) (list (list y))))))
-   (t (or (update-node (cadr node) x y)
-	  (repeat-update-node (caddr node) x y)))))
+	  (t (setcdr (last (caddr node)) (list (list new))))))
+   (t (or (update-node (cadr node) ref new)
+	  (repeat-update-node (caddr node) ref new)))))
 
-
-(defun repeat-update-node (node-list x y)
+(defun repeat-update-node (node-list ref new)
   (cond
    ((null node-list) nil)
-   (t (or (update-node (car node-list) x y)
-	  (repeat-update-node (cdr node-list) x y)))))
+   (t (or (update-node (car node-list) ref new)
+	  (repeat-update-node (cdr node-list) ref new)))))
 
 (provide 'gp-util-claim-tree)
