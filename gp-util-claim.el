@@ -124,7 +124,6 @@
           (gp-claim-tree-renderer-asterisk-1 elt)))
 	  (buffer-string)))
 
-
 ;; below functions are for utility 
 ;; list of doms only. if single dom is provided, the very first tag will be omitted. 
 (defun gp-make-claim-pairs-multi (result dom-list)
@@ -159,6 +158,25 @@
     (dolist (claim-pair claim-pairs acc)
       (setq acc (gp-make-claim-tree-new-1 claim-pair acc))  )))
 
-(gp-make-claim-tree-new '((CLM-00001) (CLM-00002 CLM-00001) (CLM-00003 CLM-00001) (CLM-00004 CLM-00002) (CLM-00005 CLM-00001) (CLM-00006 CLM-00005) (CLM-00007 CLM-00001) (CLM-00008 CLM-00007) (CLM-00009 CLM-00001) (CLM-00010 CLM-00009) (CLM-00011 CLM-00009) (CLM-00012 CLM-00010) (CLM-00013 CLM-00001) (CLM-00014 CLM-00001) (CLM-00015 CLM-00001) (CLM-00016 CLM-00001) (CLM-00017 CLM-00001) (CLM-00018 CLM-00001) (CLM-00019) (CLM-00020 CLM-00019))) 
-  
+(defun update-node (node new ref)
+  (cond
+   ((null node) nil)
+   ((string= (car node) ref)
+    (cond ((null (cdr node))  ;; no children
+	   (setcdr node (list (list new))) node) 
+	  ((null (cddr node)) ;; having just one child
+	   (if (string= (caadr node) new) node
+	     (setcdr (cdr node) (list (list (list new)))) node))
+	  ;; having more than one children
+	  (t (setcdr (last (caddr node)) (list (list new))))))
+   (t (or (update-node (cadr node) ref new)
+	  (repeat-update-node (caddr node) ref new)))))
+
+(defun repeat-update-node (node-list ref new)
+  (cond
+   ((null node-list) nil)
+   (t (or (update-node (car node-list) ref new)
+	  (repeat-update-node (cdr node-list) ref new)))))
+
+
 (provide 'gp-util-claim-tree)
