@@ -149,4 +149,26 @@
           (gp-claim-tree-renderer-asterisk-1 elt)))
 	  (buffer-string)))
 
+
+(defun update-node (node x y)
+  (cond
+   ((null node) nil)
+   ((string= (car node) x)
+    (cond ((null (cdr node))  ;; no children
+	   (setcdr node (list (list y))) node) 
+	  ((null (cddr node)) ;; having just one child
+	   (if (string= (caadr node) y) node
+	     (setcdr (cdr node) (list (list (list y)))) node))
+	  ;; having more than one children
+	  (t (setcdr (last (caddr node)) (list (list y))))))
+   (t (or (update-node (cadr node) x y)
+	  (repeat-update-node (caddr node) x y)))))
+
+
+(defun repeat-update-node (node-list x y)
+  (cond
+   ((null node-list) nil)
+   (t (or (update-node (car node-list) x y)
+	  (repeat-update-node (cdr node-list) x y)))))
+
 (provide 'gp-util-claim-tree)
