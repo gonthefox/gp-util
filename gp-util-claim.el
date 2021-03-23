@@ -80,12 +80,6 @@
 (defun gp-claims-renderer (dom)
   (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
 
-(defun gp-independent-claims (claim-pairs)
-  (let ((indeps nil))
-    (while claim-pairs
-      (when (null (cdr (car claim-pairs))) (setq indeps (cons (car claim-pairs) indeps)))
-      (setq claim-pairs (cdr claim-pairs))) 
-    indeps))
 
 (defun gp-make-claim-tree-1 (claim-pairs indep-claim-pair)
   (let ((acc nil))
@@ -146,18 +140,6 @@
   (gp-make-claim-pairs-1 (gp-get-claims patent-number)))
 
 
-(defun gp-make-claim-tree-new-1 (claim-pair acc)
-  (cond ;;(t "hello")
-	((null acc) (cons (list (car claim-pair)) acc))
-	((eq (car (car acc)) (car (cdr claim-pair)))
-	 (cons (car claim-pair) acc))
-	(t (cons (car acc) (gp-make-claim-tree-new-1 claim-pair (cdr acc))))))
-
-(defun gp-make-claim-tree-new (claim-pairs)
-  (let ((acc nil) (tree nil))
-    (dolist (claim-pair claim-pairs acc)
-      (setq acc (gp-make-claim-tree-new-1 claim-pair acc))  )))
-
 (defun update-node (node new ref)
   (cond
    ((null node) nil)
@@ -178,5 +160,17 @@
    (t (or (update-node (car node-list) ref new)
 	  (repeat-update-node (cdr node-list) ref new)))))
 
+(defun gp-independent-claims (claim-pairs)
+  (let ((indeps nil))
+    (while claim-pairs
+      (when (null (cdr (car claim-pairs))) (setq indeps (cons (car claim-pairs) indeps)))
+      (setq claim-pairs (cdr claim-pairs))) 
+    indeps))
+
+(defun gp-make-claim-tree-new (claim-pairs)
+  (let ((tree (car (gp-independent-claims claim-pairs))))
+    (dolist (claim-pair claim-pairs)
+      (setq tree (update-node tree (car claim-pair) (cadr claim-pair))))
+    tree))
 
 (provide 'gp-util-claim-tree)
