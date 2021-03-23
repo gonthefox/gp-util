@@ -139,6 +139,11 @@
 (defun gp-make-claim-pairs (patent-number)
   (gp-make-claim-pairs-1 (gp-get-claims patent-number)))
 
+(defun gp-independent-claims (claim-pairs)
+  (let ((indeps nil))
+    (dolist (claim-pair claim-pairs)
+      (when (null (cdr claim-pair)) (setq indeps (cons (cons (car claim-pair) (list "claims")) indeps))))
+    (reverse indeps)))
 
 (defun update-node (node new ref)
   (cond
@@ -153,11 +158,11 @@
       (setcdr node (list (list new))) node) 
 
      ((null (cddr node)) ;; having just one child
-      (if (string= (caadr node) new) node
+      (if (string= (car (cadr node)) new) node
 	(setcdr (cdr node) (list (list (list new)))) node))
      
      (t ;; having more than one children
-      (setcdr (last (caddr node)) (list (list new))))))
+      (setcdr (last (car (cddr node))) (list (list new))) node)))
 
    ;; 現在のノード名とリファレンスが一致しないので、ノードを探しに行く   
    (t (or
@@ -166,7 +171,7 @@
        (update-node (cadr node) new ref)
 
        ;; 第２の子ノード以降を見に行く
-	  (repeat-update-node (caddr node) new ref))))
+	  (repeat-update-node (car (cddr node)) new ref))))
 
   node)
 
@@ -179,22 +184,22 @@
     (or (update-node (car node-list) new ref)
 
 	;; 子ノードのリストから次以降のノードを見に行く
-	(repeat-update-node (cdr node-list) new ref)))))
+	(repeat-update-node (cdr node-list) new ref) node))))
 
-(defun gp-independent-claims (claim-pairs)
-  (let ((indeps nil))
-    (dolist (claim-pair claim-pairs)
-      (when (null (cdr claim-pair)) (setq indeps (cons claim-pair indeps))))
-    (reverse indeps)))
 
 (defun gp-make-claim-tree-new (claim-pairs)
-  (let ((indeps (gp-independent-claims claim-pairs))
-	(tree nil))
-    (dolist (root indeps)
-      (message "indep:%s" root)
-      (cl-reduce (lambda (acc claim-pair)
-		   (message "%s %s" (car claim-pair) (cadr claim-pair))
-		   (update-node acc (car claim-pair) (cadr claim-pair)))
-		 claim-pairs :initial-value root))))
+  (let ((tree (gp-make-root-node (gp-independent-claims claim-pairs))))
+    (dolist (pair claim-pairs)
+      (setq tree (update-node tree (car pair) (cadr pair)))
+      );; dolist
+    tree
+    );;let
+  );; defun
+
+(defun gp-make-root-node (indeps)
+      (let ((tree '("claims")))
+       (dolist (indep indeps)
+           (setq tree (update-node tree (car indep) (cadr indep))))
+	   tree))
 
 (provide 'gp-util-claim-tree)
