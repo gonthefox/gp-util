@@ -81,14 +81,14 @@
   (mapconcat 'identity (nreverse (gp-claims-renderer-1 dom nil)) ""))
 
 
-(defun gp-make-claim-tree-1 (claim-pairs indep-claim-pair)
+(defun gp-make-claim-tree-1-old (claim-pairs indep-claim-pair)
   (let ((acc nil))
     (dolist (claim-pair claim-pairs) 
       (when (equal (cdr claim-pair) indep-claim-pair) 
 	(setq acc (cons (gp-make-claim-tree-1 claim-pairs (list (car claim-pair))) acc))))
     (if (null acc) (car indep-claim-pair) (cons (car indep-claim-pair) acc))))
 
-(defun gp-make-claim-tree (patent-number)
+(defun gp-make-claim-tree-old (patent-number)
   (let* ((claim-pairs (gp-make-claim-pairs patent-number))
 	 (indeps (gp-independent-claims claim-pairs))
 	 (acc nil))
@@ -152,54 +152,55 @@
 
    ;; 現在のノード名とリファレンスが一致したとき
    ((string= (car node) ref)
+
     (cond
      
      ((null (cdr node))  ;; no children
-      (setcdr node (list (list new))) node) 
+      (setcdr node (list (list new))))
 
      ((null (cddr node)) ;; having just one child
       (if (string= (car (cadr node)) new) node
-	(setcdr (cdr node) (list (list (list new)))) node))
+	(setcdr (cdr node) (list (list (list new))))))
      
      (t ;; having more than one children
-      (setcdr (last (car (cddr node))) (list (list new))) node)))
+      (setcdr (last (car (cddr node))) (list (list new)))))
 
+     node)
+   
    ;; 現在のノード名とリファレンスが一致しないので、ノードを探しに行く   
-   (t (or
+   (t
+
+      (or
 
        ;; 第１の子ノードを見に行く
        (update-node (cadr node) new ref)
-
+       
        ;; 第２の子ノード以降を見に行く
-	  (repeat-update-node (car (cddr node)) new ref))))
+       (repeat-update-node (car (cddr node)) new ref)
 
-  node)
+       )
+       
+      node
+
+      )))
 
 (defun repeat-update-node (node-list new ref)
   (cond
    ((null node-list) nil)
    (t
-    
-    ;; 子ノードのリストから最初のノードを見に行く
-    (or (update-node (car node-list) new ref)
+      ;; 子ノードのリストから最初のノードを見に行く
+      (or (update-node (car node-list) new ref)
 
-	;; 子ノードのリストから次以降のノードを見に行く
-	(repeat-update-node (cdr node-list) new ref) node))))
+	  ;; 子ノードのリストから次以降のノードを見に行く
+	  (repeat-update-node (cdr node-list) new ref)
 
+	  ))))
 
-(defun gp-make-claim-tree-new (claim-pairs)
-  (let ((tree (gp-make-root-node (gp-independent-claims claim-pairs))))
-    (dolist (pair claim-pairs)
-      (setq tree (update-node tree (car pair) (cadr pair)))
-      );; dolist
-    tree
-    );;let
-  );; defun
-
-(defun gp-make-root-node (indeps)
-      (let ((tree '("claims")))
-       (dolist (indep indeps)
-           (setq tree (update-node tree (car indep) (cadr indep))))
-	   tree))
-
+;; generic part of making claim trees
+(defun gp-make-claim-tree-1 (root pairs)
+  (let ((tree root))
+    (dolist (pair pairs)
+      (setq tree (update-node tree (car pair) (cadr pair))))
+    tree))
+				  
 (provide 'gp-util-claim-tree)
