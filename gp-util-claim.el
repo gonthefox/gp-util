@@ -195,5 +195,21 @@
   (let ((pairs (gp-make-claim-pairs patent-number)))
     (gp-make-claim-tree-1
      (gp-make-claim-tree-1 '("claims") (gp-independent-claims pairs)) pairs)))
-							    
+
+;; 検索対象のノード名と、被対象のノードを与える 
+;; ("node name" (first child) (list of the rest children))
+(defun search-node (node x)
+  (cond
+   ((null node) nil)
+   ((string= (car node) x) node)
+   (t (or (search-node (cadr node) x)
+	  (repeat-search-node (caddr node) x)))))
+
+;; 被対象がノードのリストの場合。各ノードを走査するために再帰を用いた
+(defun repeat-search-node (node-list x)
+  (cond
+   ((null node-list) nil)
+   (t (or (search-node (car node-list) x)
+	  (repeat-search-node (cdr node-list) x)))))
+
 (provide 'gp-util-claim-tree)
