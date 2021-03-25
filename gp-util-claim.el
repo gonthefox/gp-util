@@ -175,7 +175,7 @@
   (cond
    ((null node-list) nil)
    (t
-    (message "repeats:%s" node-list)
+;;    (message "repeats:%s" node-list)
       ;; 子ノードのリストから最初のノードを見に行く
       (or (update-node (car node-list) new ref)
 
@@ -203,7 +203,7 @@
    ((null node) nil)
    ((string= (car node) x) node)
    (t (or (search-node (cadr node) x)
-	  (repeat-search-node (caddr node) x)))))
+	  (repeat-search-node (car (cddr node)) x)))))
 
 ;; 被対象がノードのリストの場合。各ノードを走査するために再帰を用いた
 (defun repeat-search-node (node-list x)
@@ -211,5 +211,15 @@
    ((null node-list) nil)
    (t (or (search-node (car node-list) x)
 	  (repeat-search-node (cdr node-list) x)))))
+
+;; 子ノードのリストを取得する
+(defun get-first-child (tree)
+       (car (cadr tree)))
+
+(defun get-later-children (tree)
+     (mapcar #'car  (car (cddr tree))))
+
+(defun get-children (tree)
+       (cons (gp-first-child tree) (gp-later-children tree))) 
 
 (provide 'gp-util-claim-tree)
