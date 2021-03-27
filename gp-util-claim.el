@@ -220,6 +220,6 @@
      (mapcar #'car  (car (cddr tree))))
 
 (defun get-children (tree)
-       (cons (gp-first-child tree) (gp-later-children tree))) 
+       (cons (get-first-child tree) (get-later-children tree))) 
 
 (provide 'gp-util-claim-tree)
