@@ -12,7 +12,7 @@
    ((null node) nil)
    ((null ref) node)
 
-   ;; 現在のノード名とリファレンスが一致したとき
+   ;; 現在のノード名(car node)とリファレンスが一致したとき
    ((string= (car node) ref)
 
     (cond
@@ -98,3 +98,28 @@
 ;; get all the children
 (defun node-children (tree)
        (cons (node-first-child tree) (node-later-children tree))) 
+
+
+(defun find-leaves (tree)
+  ;; 子を持たないノード (leaves) を返す
+  (cond 
+   ((null tree) acc) ;; tree 自体が null
+   ((null (cdr tree)) (car tree)) ;; no children
+   ;; 子がある場合は，直接の子 (siblings)に対して同様の処理をする
+   (t (repeat-find-leaves (node-children tree)))))
+
+(defun repeat-find-leaves (siblings)
+  ;; 直接の子 (siblings) の最初の子に対して find-leavesを行ない，二番目以下の子に対しても順次同様の処理を行う
+  (cond 
+   ((null siblings) nil)
+   (t (cons (find-leaves (search-node tree (car siblings))) (repeat-find-leaves (cdr siblings))))))
+
+;; treeの最大深さを返す
+;; https://cloud6.net/so/list/3534494
+(cl-defun list-depth (list &optional (depth 0))
+  (cond ((null list) depth)
+	((atom (car list)) (list-depth (cdr list) depth))
+	(t (max (list-depth (car list) (1+ depth))
+		(list-depth (cdr list) depth)))))
+
+(provide 'gp-tree)
