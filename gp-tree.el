@@ -122,4 +122,31 @@
 	(t (max (list-depth (car list) (1+ depth))
 		(list-depth (cdr list) depth)))))
 
+
+;; 検索対象のノード名と、被対象のノードを与える 
+;; ("node name" (first child) (list of the rest children))
+(cl-defun search-node-depth (node x &optional (depth 0))
+  (cond
+   ((null node) depth)
+   ((string= (car node) x) depth)
+   (t (or (search-node-depth (cadr node) x (1+ depth))
+	  (repeat-search-node-depth (car (cddr node)) x (1+ depth))))))
+
+;; 被対象がノードのリストの場合。各ノードを走査するために再帰を用いた
+(defun repeat-search-node-depth (node-list x &optional (depth 0))
+  (cond
+   ((null node-list) nil)
+   (t (or (search-node-depth (car node-list) x (1+ depth))
+	  (repeat-search-node-depth (cdr node-list) x (1+ depth))))))
+
+;; ノードの深さを返す
+(defun depth-of-node (claim claim-pairs depth)
+  (cond 
+   ((null claim) nil)     
+   ((null claim-pairs) nil)
+   (t (dolist (pair claim-pairs)
+	(cond ((string= claim (car pair))
+	       (unless (null (cdr pair)) (setq depth (depth-of-node (car (cdr pair)) claim-pairs (1+ depth)))))))))
+  depth)
+
 (provide 'gp-tree)
