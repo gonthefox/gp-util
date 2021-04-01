@@ -14,6 +14,7 @@
 
 (load "gp-util-claim")
 (load "gp-util-print")
+(load "gp-tree")
 
 (defcustom db-path "/var/db/patent/"
   "full path to the directory where rawfiles will be stored.")
