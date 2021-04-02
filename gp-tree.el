@@ -162,13 +162,29 @@
     (cond
      ((null claim-pairs) nil)
      (t (dolist (pair claim-pairs)
-	  (insert (format "%s %s%s %s\n"
-			  ":"
-			  (apply #'concat (make-list      (depth-of-node (car pair) claim-pairs 0)  "          "))
-			  (apply #'concat (make-list (- 3 (depth-of-node (car pair) claim-pairs 0)) "+---------"))
-			  (car pair)
-			  )))))
+	  (let ((depth (depth-of-node (car pair) claim-pairs 0)))
+	    (insert (format "%s %s%s\n%s %s%s  %s\n"
+			    ":"
+			    (apply #'concat (make-list      depth  "          "))
+			    (if (> depth 0) ;; not a top level 
+				(apply #'concat (make-list      1      "|         ")) " ")
+			    ":"
+			    (apply #'concat (make-list      depth  "          "))
+			    (if (> depth 0) ;; not a top level 			    
+				(apply #'concat (make-list (- (1+ (max-depth-of-node claim-pairs)) depth) "+---------"))
+			      (apply #'concat "*---------" (make-list (- (max-depth-of-node claim-pairs) depth) "+---------")))
+			    (car pair)
+			  ))))))
     (buffer-string)))
     
+
+(defun max-depth-of-node (claim-pairs)
+  (let ((max-depth 0))
+    (cond
+     ((null claim-pairs) nil)
+     (t (dolist (pair claim-pairs max-depth)
+	  (let ((depth (depth-of-node (car pair) claim-pairs 0)))
+	    (when (< max-depth depth) (setq max-depth depth))
+	    ))))))
 
 (provide 'gp-tree)
