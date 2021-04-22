@@ -361,9 +361,13 @@
   (let ((figrefs (gp-get-figrefs patent-number)))
     (while figrefs
       (with-temp-buffer
+	(message "generating a file for: %s" (car figrefs))
 	(insert (format "#+attr_html: :style transform:rotate(0deg) :width 450px\n"))
 	(insert (format "[[%s:]]\n" (car figrefs)))
-	(write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) (format "%s.org" (downcase (car figrefs))))))
+	(write-region (point-min) (point-max)
+		      (concat (gp-full-path-to-rawfile-store patent-number)
+			      (format "%s.org" (replace-regexp-in-string "\\/" "" (downcase (car figrefs)))   )))
+	)
       (setq figrefs (cdr figrefs)))))
 
 (defun gp-get-figrefs (patent-number)
