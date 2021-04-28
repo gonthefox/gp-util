@@ -198,7 +198,7 @@
   "Receive a paragraph as a dom and render it as text."
   (let (( num-string (dom-attr dom 'num)))
     (if (stringp num-string)
-	(format "#+name:%s\n#+begin_quote\n%s\n#+end_quote"
+	(format "#+attr_html: :id %s\n#+begin_quote\n%s\n#+end_quote"
 		(progn (string-match "[0-9]+" num-string) (match-string 0 num-string))
 		(mapconcat 'identity (gp-paragraph-replace-tag dom) "")
 		)
@@ -238,7 +238,9 @@
 	(cond 
 	 ( (eq (car object) 'h2) (cons (format "* %s\n" (nth 2 object)) acc) )
 	 ( (eq (car object) 'heading) (cons (format "** %s\n" (nth 2 object)) acc) )
-	 ( (and (eq (car object) 'div) (string= (dom-attr object 'class) "description-line")) 
+	 ( (and (eq (car object) 'div)
+		(or (string= (dom-attr object 'class) "description-line")
+		    (string= (dom-attr object 'class) "description-paragraph")))
 	       (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
 	 ( (eq (car object) 'p) (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
 	 ( t (gp-description-renderer-1 (cddr object) acc ))
