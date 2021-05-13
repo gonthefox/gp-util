@@ -1,7 +1,8 @@
 #+begin_export html
 <style>
-.title {text-align: center;}
-.date  {text-align: center;}
+.title  {text-align: center;}
+.date   {text-align: center;}
+.figure {text-align: center;}
 h3,h4,h5,h6,h7,h8,h9 {font-size: 1.125em; font-weight: normal}
 table {
     width: 100%;
@@ -84,16 +85,12 @@ width: 3em;
 text-align: center;
 }
 
-[id="claim"] table tr td:nth-child(3) {
-width: 40%;
+[id="claim"] table tr td:nth-child(2) {
+text-align: justify;
 }
 
-blockquote[id="claim"]:before {
-    content: "CLAIM LANGUAGE";
-    background: gray;
-    color: lightgray;
-    padding-left: 4pt;
-    padding-right: 4pt;    
+[id="claim"] table tr td:nth-child(3) {
+width: 40%;
 }
 
 [id="note"] {
