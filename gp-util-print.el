@@ -26,13 +26,18 @@
 	 (copy-file full-path-to-image-aliases "./" t)))
 
 (defun gp-import-image-embeded-files-from-db (patent-number)
-  (let ((figrefs (gp-get-figrefs patent-number)))
-    (while figrefs
-      (let ((target (concat (gp-full-path-to-rawfile-store patent-number) (format "%s.org" (downcase (car figrefs))))))
+    (let ((image-files (reverse (mapcar #'file-name-nondirectory (gp-get-image-urls patent-number)))))
+    (while image-files
+      (let ((target (concat (gp-full-path-to-rawfile-store patent-number)
+			    (progn
+			      (setq test (car image-files))
+			      (string-match "-\\([0-9]+\\)" test)
+			      (format "figref-%s.org" (replace-regexp-in-string "\\/" "" (downcase (match-string 1 test)))))
+			    )))
 	(if (file-exists-p target) (copy-file target "./" t) (gp-create-image-embeded-files patent-number)))
-      (setq figrefs (cdr figrefs)))))
+      (setq image-files (cdr image-files)))))
 
-  (defun gp-pretty-print-patent-number (patent-number)
+(defun gp-pretty-print-patent-number (patent-number)
     (if (stringp patent-number)
 	(let (( country-code (if (string-match "^[a-zA-Z]\\{2\\}" patent-number) (match-string 0 patent-number) nil))
 	      ( kind-code    (if (string-match "[a-zA-Z][0-9]$" patent-number) (match-string 0 patent-number) nil))
@@ -47,7 +52,7 @@
 
       patent-number))
 
-  (defun gp-pretty-print-usp (just-number)
+(defun gp-pretty-print-usp (just-number)
     (let ((acc nil))
       (while (> (length just-number) 0)
 	(if (>= (length just-number) 3)
