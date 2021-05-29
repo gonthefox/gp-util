@@ -349,28 +349,32 @@
                     dom :initial-value nil))
         result))
 
+
 (defun gp-create-image-aliases (patent-number)
   (with-temp-buffer
-  (let ((image-files (reverse (mapcar #'file-name-nondirectory (gp-get-image-urls patent-number))))
-        (figrefs     (reverse (gp-get-figrefs patent-number))))
-    (while image-files
-      (insert (format "#+link: %s file:./figs/%s\n" (car figrefs) (car image-files)))
-      (setq figrefs (cdr figrefs))
-      (setq image-files (cdr image-files)))
-    (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
+    (let ((image-files (reverse (mapcar #'file-name-nondirectory (gp-get-image-urls patent-number)))))
+      (while image-files
+	(insert (format "#+link: %s file:./figs/%s\n" (progn (setq test (car image-files)) (string-match "-\\([0-9]+\\)" test) (format "FIGREF-%s" (match-string 1 test))) (car image-files)))
+	(setq image-files (cdr image-files)))
+      (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
 
-(defun gp-create-image-embeded-files (patent-number)
-  (let ((figrefs (gp-get-figrefs patent-number)))
-    (while figrefs
-      (with-temp-buffer
-	(message "generating a file for: %s" (car figrefs))
-	(insert (format "#+attr_html: :style transform:rotate(0deg) :width 450px\n"))
-	(insert (format "[[%s:]]\n" (car figrefs)))
-	(write-region (point-min) (point-max)
-		      (concat (gp-full-path-to-rawfile-store patent-number)
-			      (format "%s.org" (replace-regexp-in-string "\\/" "" (downcase (car figrefs)))   )))
-	)
-      (setq figrefs (cdr figrefs)))))
+  (defun gp-create-image-embeded-files (patent-number)
+    (let ((image-files (reverse (mapcar #'file-name-nondirectory (gp-get-image-urls patent-number)))))
+      (while image-files
+	(with-temp-buffer
+	  (message "%s" (car image-files))
+	  (insert (format "#+attr_html: :style transform:rotate(0deg) :width 450px\n"))
+	  (insert (format "[[%s:]]\n"
+			  (progn
+			    (setq test (car image-files))
+			    (string-match "-\\([0-9]+\\)" test)
+			    (format "FIGREF-%s" (match-string 1 test)))))
+	  (write-region (point-min) (point-max)
+			(concat (gp-full-path-to-rawfile-store patent-number)
+				(format "figref-%s.org" (replace-regexp-in-string "\\/" "" (downcase (match-string 1 test))))))
+	  (setq image-files (cdr image-files))
+	))))
+
 
 (defun gp-get-figrefs (patent-number)
      (let ((figref-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'figref))
