@@ -14,8 +14,8 @@
 (defun gp-claim-text-renderer (dom)
   "Receive claims as a dom and render it as text."
   (format "#+begin_quote\n%s\n#+end_quote\n"
-	  (replace-regexp-in-string "^\\([0-9]+\\)\.\\s-*\\(\\S-+\\)" "Claim \\1. \\2" (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) ""))
-;;	  (replace-regexp-in-string "^\\([0-9]+\\)\.\\s-*\\(\\S-+\\)" "Cl.\\1. [@\\1] \\2" (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) ""));;	  (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) "")
+	  (replace-regexp-in-string "^\\([0-9]+\\)\.\\s-*\\(\\S-+\\)" "Claim \\1. \\2"
+				    (mapconcat 'identity (nreverse (gp-claim-text-renderer-1 dom nil)) ""))
 	  ))
 
 ;;(claims-renderer (gp-get-claims patent-number))
@@ -31,10 +31,11 @@
 		    ((and (eq (dom-tag object) 'div) (string= (dom-attr object 'class) "claim-text")) 
 		                                     (gp-claim-text-renderer-1 (dom-children object) acc ))
                     ((eq (dom-tag object) 'claim-ref) 
-;;		     (setq acc (cons (format "[[%s][%s]]" (dom-attr object 'idref) (dom-text object)) acc)))
 		     (setq acc (cons (format "%s" (dom-text object)) acc)))		    
 		    
 		    ((eq (dom-tag object) 'div)             (gp-claim-text-renderer-1 (dom-children object) acc))
+		    ((eq (dom-tag object) 'u)              (setq acc (cons (format " _%s_ " (dom-text object)) acc)))
+		    
 		    (t acc)))))
 
 		     dom :initial-value nil
@@ -58,7 +59,16 @@
 	       (let  ((claim-id (dom-attr object 'id)))
 		 (setq acc (cons (format "** <<%s>> Claim %s\n" claim-id (gp-get-claim-id claim-id) ) acc))		    
 		 (cons (gp-claim-text-renderer (dom-children object)) acc)))
+
+	      ((and (eq (dom-tag object) 'div) (assoc 'num (dom-attributes object)))
+	       (let  ((claim-id (dom-attr object 'num)))
+		 (setq acc (cons (format "** <<%s>> Claim %s\n" claim-id (gp-get-claim-id claim-id) ) acc))		    
+		 (cons (gp-claim-text-renderer (dom-children object)) acc)))
+	      
 	      ((eq (dom-tag object) 'div)             (gp-claims-renderer-1 (dom-children object) acc))
+	      ((eq (dom-tag object) 'li)              (gp-claims-renderer-1 (dom-children object) acc))
+	      ((eq (dom-tag object) 'ol)              (gp-claims-renderer-1 (dom-children object) acc))	      		  
+		    
 	      (t acc)))))
 		    
     dom :initial-value nil
