@@ -1,0 +1,9 @@
+#+begin_src emacs-lisp :results raw
+      (require 'gp-util)
+      (setq patent-number
+	    (car (cdr (reverse (split-string
+				(file-name-directory buffer-file-name)
+				"/")
+			       ))))
+      (gp-print-specification patent-number)
+#+end_src

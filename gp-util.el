@@ -14,6 +14,7 @@
 
 (load "gp-util-claim")
 (load "gp-util-print")
+(load "gp-util-misc")
 
 (defcustom db-path "/var/db/patent/"
   "full path to the directory where rawfiles will be stored.")
@@ -354,7 +355,8 @@
   (with-temp-buffer
     (let ((image-files (reverse (mapcar #'file-name-nondirectory (gp-get-image-urls patent-number)))))
       (while image-files
-	(insert (format "#+link: %s file:./figs/%s\n" (progn (setq test (car image-files)) (string-match "-\\([0-9]+\\)" test) (format "FIGREF-%s" (match-string 1 test))) (car image-files)))
+	(insert (format "#+link: %s file:./figs/%s\n"
+			(progn (setq test (car image-files)) (string-match "-.*?\\([0-9]+\\)\\." test) (format "FIGREF-%d" (string-to-number (match-string 1 test)))) (car image-files)))
 	(setq image-files (cdr image-files)))
       (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
 
@@ -367,11 +369,11 @@
 	  (insert (format "[[%s:]]\n"
 			  (progn
 			    (setq test (car image-files))
-			    (string-match "-\\([0-9]+\\)" test)
-			    (format "FIGREF-%s" (match-string 1 test)))))
+			    (string-match "-.*?\\([0-9]+\\)\\." test)
+			    (format "FIGREF-%d" (string-to-number (match-string 1 test))))))
 	  (write-region (point-min) (point-max)
 			(concat (gp-full-path-to-rawfile-store patent-number)
-				(format "figref-%s.org" (replace-regexp-in-string "\\/" "" (downcase (match-string 1 test))))))
+				(format "figref-%d.org" (string-to-number (match-string 1 test)))))	  
 	  (setq image-files (cdr image-files))
 	))))
 

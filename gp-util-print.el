@@ -3,8 +3,15 @@
 (defcustom gp-style-file "/var/db/patent/config/style.org"
   "full path to the directory where style.org will be stored.")
 
+(defcustom gp-description-file "/var/db/patent/config/description.org"
+  "full path to the directory where description.org will be stored.")
+
 (defun gp-import-style-file ()
   (copy-file gp-style-file "./" t))
+
+(defun gp-import-description-file ()
+  (interactive)
+  (copy-file gp-description-file "./" t))
 
 (defun gp-full-path-to-pdf (patent-number)
   (concat (gp-full-path-to-rawfile-store patent-number)
@@ -31,8 +38,9 @@
       (let ((target (concat (gp-full-path-to-rawfile-store patent-number)
 			    (progn
 			      (setq test (car image-files))
-			      (string-match "-\\([0-9]+\\)" test)
-			      (format "figref-%s.org" (replace-regexp-in-string "\\/" "" (downcase (match-string 1 test)))))
+			      (string-match "-.*?\\([0-9]+\\)\\." test)
+			      (format "figref-%d.org" (string-to-number (match-string 1 test))))
+;;			      (format "figref-%s.org" (replace-regexp-in-string "\\/" "" (downcase (match-string 1 test)))))
 			    )))
 	(if (file-exists-p target) (copy-file target "./" t) (gp-create-image-embeded-files patent-number)))
       (setq image-files (cdr image-files)))))
@@ -84,7 +92,8 @@
     (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
 		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))
     (insert (format "#+html: <h2 style=\"text-align: center;\">%s</h2>\n"
-		    (gp-pretty-print-patent-number (dom-text (gp-get-representative-publication patent-number)))))
+		    (gp-pretty-print-patent-number
+		     (dom-text (gp-get-representative-publication patent-number)))))
     (insert (format "#+author: %s\n" (nth 2 (gp-get-inventor patent-number))))
     (insert (format "#+date: %s\n" (nth 2 (gp-get-filing-date patent-number))))
     (insert (format "#+options: toc:nil H:5\n"))
