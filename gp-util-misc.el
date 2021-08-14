@@ -28,3 +28,14 @@
 	    )
 	  (insert "#+END_QUOTE\n")
 	  (buffer-string))))
+
+(setq description-template "~/github/gp-util/description.org")
+(defun gp-make-description ()
+  (interactive)
+  (insert-file-contents description-template))
+
+
+
+    
+				
+
