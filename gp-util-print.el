@@ -6,6 +6,9 @@
 (defcustom gp-description-file "/var/db/patent/config/description.org"
   "full path to the directory where description.org will be stored.")
 
+(defcustom org-macros "~/.emacs.d/org-macros/org-macros.setup"
+  "path to the directory where org-macros is located.")
+
 (defun gp-import-style-file ()
   (copy-file gp-style-file "./" t))
 
@@ -99,7 +102,8 @@
     (insert (format "#+options: toc:nil H:5\n"))
     (insert (format "#+TOC: headlines 5\n"))
     (insert (format "#+include: \"%s\" \n" image-aliases-name))
-    (insert (format "#+include: \"%s\" \n" style-name))    
+    (insert (format "#+include: \"%s\" \n" style-name))
+    (insert (format "#+include: \"%s\" \n" org-macros))        
     (insert (gp-abstract-renderer (gp-get-abstract patent-number)))
     (insert (gp-description-renderer (gp-get-description patent-number)))
     (insert (gp-claims-renderer (gp-get-claims patent-number)))
