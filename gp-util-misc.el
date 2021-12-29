@@ -22,7 +22,7 @@
       (insert "#+attr_html: :id claim\n")
       (insert "#+BEGIN_QUOTE\n")
       (insert "|REF| claim language|参考訳|\n")
-      (insert "||<40>|<40>|\n"))
+      (insert "||<40>|<40>|\n")
       (insert "|-\n")
       (dolist (col2si col2s)
 	(setq col3si (car col3s))
@@ -31,7 +31,7 @@
 	(setq col3s (cdr col3s))
 	(setq col1s (cdr col1s)))	    
       (insert "#+END_QUOTE\n")
-      (buffer-string)))
+      (buffer-string))))
 
 
 (defun gp-make-claim-table-single (col)
@@ -42,13 +42,13 @@
       (insert "#+attr_html: :id claim\n")
       (insert "#+BEGIN_QUOTE\n")
       (insert "|REF| claim language|\n")
-      (insert "||<40>|\n"))
+      (insert "||<40>|\n")
       (insert "|-\n")
       (dolist (colsi cols)
 	(insert (concat (replace-regexp-in-string "\n" "" (format "| %s | %s |" " " colsi)) "\n"))
 	(setq cols (cdr cols)))	    
       (insert "#+END_QUOTE\n")
-      (buffer-string)))
+      (buffer-string))))
 
 (setq description-template "~/github/gp-util/description.org")
 (defun gp-make-description ()
@@ -68,20 +68,55 @@
 		     (upcase (match-string 1 item))  ) item))))
     (buffer-string)))
 
-
-(defun gp-make-image-embeded-files ()
+;; FIGREFのインデックスを強制的に1から順に始める
+(defun gp-make-image-aliases-config-forced ()
   (interactive)
-  (dolist (item (directory-files "./figs/"))
-    (if (string-match "png$" item)
-	(with-temp-buffer
-	  (progn 
-	    (insert (format "#+attr_html: :style transform:rotate(0deg) :width 450px\n"))
-	    (insert (format "[[%s:]]\n"
-			    (progn
-			      (string-match "-\\([0-9a-z]+\\).png" item)
-			      (format "FIGREF-%s" (upcase (match-string 1 item))))))
-	    (write-region (point-min) (point-max)
-			  (format "./figref-%s.org" (match-string 1 item))))))))
+  (let ((count 1))
+    (with-temp-file "./image-aliases.inc"
+      (dolist (item (directory-files "./figs/"))
+	(if (string-match "png$" item)
+	    (progn
+	      (insert
+	       (format "#+link: FIGREF-%s file:./figs/%s\n" count item))
+
+	      (setq count (+ count 1)))))
+
+      (buffer-string))))
+
+;(defun gp-make-image-embeded-files ()
+;  (interactive)
+;  (dolist (item (directory-files "./figs/"))
+;    (if (string-match "png$" item)
+;	(with-temp-buffer
+;	  (progn 
+;	    (insert (format "#+attr_html: :style transform:rotate(0deg) :width 450px\n"))
+;	    (insert (format "[[%s:]]\n"
+;			    (progn
+;			      (string-match "-\\([0-9a-z]+\\).png" item)
+;			      (format "FIGREF-%s" (upcase (match-string 1 item))))))
+;	    (write-region (point-min) (point-max)
+;			  (format "./figref-%s.org" (match-string 1 item))))))))
+
+  (defun gp-make-image-embeded-files ()
+      (interactive)
+      (with-temp-buffer
+	(insert-file-contents "./image-aliases.org")
+	(let ((lines (split-string (buffer-string) "\n" t)))
+	  (dolist (line lines)
+	    (with-temp-buffer
+	      (progn
+		(insert (format "#+attr_html: :style transform:rotate(0deg) :width 450px\n"))
+		(insert (format "[[FIGREF-%s:]]\n"
+				(progn
+				  (string-match "FIGREF-\\([0-9a-zA-Z]+\\)" line)
+				  (match-string 1 line))))
+		(write-region (point-min) (point-max)
+			      (format "./figref-%s.org" (match-string 1 line)))))
+
+
+	    ))
+	(buffer-string)))
+
 
 (defun gp-figure-config-on-the-spot ()
   (interactive)
