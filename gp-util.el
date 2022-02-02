@@ -101,7 +101,7 @@
 (defun gp-retrieve-and-store-patent (PATENT-NUMBER)
   "Retrieve a patent specified by PATENT-NUMBER from Google Patent 
    and transform into a dom tree"
-  (and 
+  (progn
    (gp-retrieve-and-store-patent-wget patent-number)
    (gp-retrieve-and-store-patent-images-wget patent-number)
    (gp-retrieve-and-store-patent-pdf-wget patent-number)
@@ -116,9 +116,8 @@
 	(file  (gp-full-path-to-rawfile patent-number)))
     (unless (file-exists-p file)
       (unless (file-exists-p store) (make-directory store t))
-;      (async-shell-command
       (call-process-shell-command
-      (mapconcat #'shell-quote-argument
+       (mapconcat #'shell-quote-argument
 		  (list wget-program url "-O" file) " ")))))
 
 (defun gp-get-patent-as-dom-1 (patent-number)
