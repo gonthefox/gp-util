@@ -4,6 +4,12 @@
 ;;  Version: 0.1
 ;;; Commentary:
 ;;  This package provides a set of useful APIs for patent analysis.
+;;  
+;;  
+;;  Google Patents   [Convertor]   Local DB  
+;;         ^                           ^ (*.el)
+;;         |                           |
+;;         +---------------------------+------ [Retriever] 
 ;; 
 ;; -*- coding: utf-8 -*-
 ;; (setq patent-number "JP2003085659A")
@@ -21,6 +27,9 @@
 
 (defcustom rawfile-name "raw.html"
   "filename for the raw files.")
+
+(defcustom listfile-name "list.el"
+  "filename for the list files.")
 
 (defcustom image-aliases-name "image-aliases.org"
   "filename for the image-aliases.")
@@ -43,6 +52,11 @@
 (defcustom copy-program "/bin/cp"
   "path for cp")
 
+
+(defun gp-retriever (patent-number)
+  "Return paetnt content as s-expression."
+  (concat (gp-full-path-to-rawfile-store patent-number) listfile-name))
+  
 (defun gp-full-path-to-rawfile-store (patent-number)
   "Return the full path to a rawfile store."
   (concat db-path patent-number "/"))
@@ -111,7 +125,11 @@
 
 (defun gp-retrieve-and-store-patent-wget (patent-number)
   "Retrieve a patent from Google patents and store it in DB-PATH as RAWFILE-NAME"
-  (let ((url  (concat gp-url  patent-number))
+  (let ((url
+	 (if (string= (substring patent-number 0 2) "EP")
+	     (concat gp-url  patent-number "/en?oq=" patent-number)
+	   (concat gp-url  patent-number))
+	 )
 	(store (gp-full-path-to-rawfile-store patent-number))
 	(file  (gp-full-path-to-rawfile patent-number)))
     (unless (file-exists-p file)
@@ -120,23 +138,61 @@
        (mapconcat #'shell-quote-argument
 		  (list wget-program url "-O" file) " ")))))
 
-(defun gp-get-patent-as-dom-1 (patent-number)
-  (with-temp-buffer
-    (insert (gp-get-patent patent-number))
-    (while (re-search-forward "^[\s-]+$" nil t)
-      (replace-match ""))
-    (flush-lines "^\n")
-    (libxml-parse-html-region (point-min) (point-max))
-    ))
+(defun gp-read-rawfile-and-save-as-dom (patent-number)
+  (let* ((local-path (gp-full-path-to-rawfile-store patent-number))
+	 (rawfile (concat local-path rawfile-name))
+	 (listfile (concat local-path listfile-name)))
+;    (message (concat rawfile " " listfile))
+    (with-temp-buffer 
+      (insert (format "%S" (gp-get-abstract
+			    (gp-convert-html-to-dom (find-file-noselect rawfile))
+			    )
+		      ))
+      (write-file listfile))))
 
-(defun gp-get-patent-as-dom (patent-number)
-  (your-sanitize-function (gp-get-patent-as-dom-1 patent-number)))
+(defun gp-convert-html-to-dom (in-buffer)
+  (your-sanitize-function
+   (with-current-buffer in-buffer
+     (while (re-search-forward "^[\s-]+$" nil t)
+       (replace-match ""))
+     (flush-lines "^\n")
+     (libxml-parse-html-region (point-min) (point-max))
+     )))
+
+;; section group
+(defun gp-get-sections (dom)
+  "Extract sections and return them as a list."
+  (dom-by-tag dom 'section))
+
+(defun gp-get-each-section (dom-list section-id)
+  "Get the section specified by section-id and return it as dom"
+  (dolist (section domlist result)
+    (if (string= (dom-attr section 'itemprop) section-id)
+	(setq result section)
+      ))
+  (if result (message "section '%s' found." section-id)
+    (message "section '%s' NOT found." section-id)
+    )
+  result)
+
+(defun gp-get-abstract (dom-list)
+  (gp-get-each-section domlist "abstract"))
+
+(defun gp-get-description (dom-list)
+  (gp-get-each-section domlist "description"))
+
+(defun gp-get-claims (dom-list)
+  (gp-get-each-section domlist "claims"))
+
+(defun gp-get-metadata (dom-list)
+  (gp-get-each-section domlist "metadata"))
+
 
 ;; link group
-(defun gp-get-link-item (patent-number link-id)
+;(defun gp-get-link-item (patent-number link-id)
   "Get a link-item specified by link-id from a tag"
-(let ((a-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'a)))
-  (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) link-id) s a)) a-list :initial-value nil)))
+;(let ((a-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'a)))
+;  (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) link-id) s a)) a-list :initial-value nil)))
 
 (defun gp-retrieve-and-store-patent-pdf-wget (patent-number)
   (let* ((pdfLink (dom-attr (gp-get-link-item patent-number 'pdfLink) 'href))
@@ -174,35 +230,6 @@
 
 (defun gp-get-pripmary-language (patent-number)
   (gp-get-metadata-item patent-number "primaryLanguage"))
-
-;; section group
-(defun gp-get-section (patent-number section-id)
-  "Get a section specified by section-id from dom"
-(let ((section-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'section)))
-  (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) section-id) s a)) section-list :initial-value nil)))
-
-(defun gp-get-abstract (patent-number)
-  (gp-get-section patent-number "abstract"))
-
-(defun gp-get-description (patent-number)
-  (gp-get-section patent-number "description")
-  )
-
-(defun gp-get-claims (patent-number)
-  (gp-get-section patent-number "claims")
-  )
-
-(defun gp-get-metadata (patent-number)
-  (gp-get-section patent-number "metadata")
-  )
-
-(defun gp-get-family (patent-number)
-  (gp-get-section patent-number "family")
-  )
-
-(defun gp-get-application (patent-number)
-  (gp-get-section patent-number "application")
-  )
 
 ;; other metadata outside of meta section
 (defun gp-get-inventor (patent-number)
@@ -355,7 +382,12 @@
     (let ((image-files (reverse (mapcar #'file-name-nondirectory (gp-get-image-urls patent-number)))))
       (while image-files
 	(insert (format "#+link: %s file:./figs/%s\n"
-			(progn (setq test (car image-files)) (string-match "-.*?\\([0-9]+\\)\\." test) (format "FIGREF-%d" (string-to-number (match-string 1 test)))) (car image-files)))
+			(progn (setq test (car image-files))
+			       (if (string-match "-.*?\\([0-9]+\\)\\." test)
+				   (format "FIGREF-%d" (string-to-number (match-string 1 test))) nil)
+;			       (message test)
+			       )
+			(car image-files)))
 	(setq image-files (cdr image-files)))
       (write-region (point-min) (point-max) (concat (gp-full-path-to-rawfile-store patent-number) image-aliases-name) ))))
 

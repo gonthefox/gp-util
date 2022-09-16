@@ -82,11 +82,11 @@
 ;; gp-print-specification
 (defun gp-print-specification (patent-number)
   "Print specification as HTML"
-  (gp-get-patent patent-number)
+;  (gp-get-patent patent-number)
   (if (file-exists-p (gp-full-path-to-images-store patent-number))
       (gp-import-figs-from-db patent-number))
-  (gp-import-image-aliases-from-db patent-number)
-  (gp-import-image-embeded-files-from-db patent-number)
+;  (gp-import-image-aliases-from-db patent-number)
+;  (gp-import-image-embeded-files-from-db patent-number)
   (if (file-exists-p (gp-full-path-to-pdf patent-number))
       (gp-import-pdf-from-db patent-number))
   (gp-import-style-file)

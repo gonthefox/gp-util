@@ -74,7 +74,7 @@
   (let ((count 1))
     (with-temp-file "./image-aliases.inc"
       (dolist (item (directory-files "./figs/"))
-	(if (string-match "png$" item)
+	(if (string-match "[png|PNG]$" item)
 	    (progn
 	      (insert
 	       (format "#+link: FIGREF-%s file:./figs/%s\n" count item))
@@ -123,3 +123,4 @@
   (gp-make-image-aliases-config)
   (gp-make-iamge-embedded-files)
   )
+
