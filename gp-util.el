@@ -83,6 +83,9 @@
     (if (gp-find-patent patent-number) (gp-get-patent-from-db patent-number)
       (message "Error: %s cannot load." patent-number ))))
 
+(defun gp-get-patent-as-dom (patent-number)
+  t)
+
 (defun gp-get-patent-from-db (patent-number)
   (with-temp-buffer
     (insert-file-contents (gp-full-path-to-rawfile patent-number))
@@ -138,18 +141,6 @@
        (mapconcat #'shell-quote-argument
 		  (list wget-program url "-O" file) " ")))))
 
-(defun gp-read-rawfile-and-save-as-dom (patent-number)
-  (let* ((local-path (gp-full-path-to-rawfile-store patent-number))
-	 (rawfile (concat local-path rawfile-name))
-	 (listfile (concat local-path listfile-name)))
-;    (message (concat rawfile " " listfile))
-    (with-temp-buffer 
-      (insert (format "%S" (gp-get-abstract
-			    (gp-convert-html-to-dom (find-file-noselect rawfile))
-			    )
-		      ))
-      (write-file listfile))))
-
 (defun gp-convert-html-to-dom (in-buffer)
   (your-sanitize-function
    (with-current-buffer in-buffer
@@ -166,27 +157,26 @@
 
 (defun gp-get-each-section (dom-list section-id)
   "Get the section specified by section-id and return it as dom"
-  (dolist (section domlist result)
+  (dolist (section dom-list result)
     (if (string= (dom-attr section 'itemprop) section-id)
 	(setq result section)
-      ))
-  (if result (message "section '%s' found." section-id)
-    (message "section '%s' NOT found." section-id)
-    )
-  result)
+      )))
+  
 
 (defun gp-get-abstract (dom-list)
-  (gp-get-each-section domlist "abstract"))
+  (gp-get-each-section dom-list "abstract"))
 
 (defun gp-get-description (dom-list)
-  (gp-get-each-section domlist "description"))
+  (gp-get-each-section dom-list "description"))
 
 (defun gp-get-claims (dom-list)
-  (gp-get-each-section domlist "claims"))
+  (gp-get-each-section dom-list "claims"))
 
 (defun gp-get-metadata (dom-list)
-  (gp-get-each-section domlist "metadata"))
+  (gp-get-each-section dom-list "metadata"))
 
+(defun gp-get-application (dom-list)
+  (gp-get-each-section dom-list "application"))
 
 ;; link group
 ;(defun gp-get-link-item (patent-number link-id)
