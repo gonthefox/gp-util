@@ -163,6 +163,14 @@
       )))
   
 
+(defun gp-rectify-section (dom section-id)
+  "Extract essential text and remove (br nil) tags"
+  (let ((essential-tag 
+	 (dolist (div (dom-by-tag dom 'div) result)
+	   (if (string= (dom-attr div 'class) section-id)
+	       (setq result div)))))
+    (delete '(br nil) essential-tag)))
+
 (defun gp-get-abstract (dom-list)
   (gp-get-each-section dom-list "abstract"))
 
