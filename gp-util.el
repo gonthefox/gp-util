@@ -5,11 +5,6 @@
 ;;; Commentary:
 ;;  This package provides a set of useful APIs for patent analysis.
 ;;  
-;;  
-;;  Google Patents   [Convertor]   Local DB  
-;;         ^                           ^ (*.el)
-;;         |                           |
-;;         +---------------------------+------ [Retriever] 
 ;; 
 ;; -*- coding: utf-8 -*-
 ;; (setq patent-number "JP2003085659A")
@@ -17,6 +12,8 @@
 
 (require 'dom)
 (require 'request)
+
+(setq url-user-agent "User-Agent: w3m/0.5.3\r\n")
 
 (load "gp-util-claim")
 (load "gp-util-print")
@@ -82,7 +79,6 @@
     ;; 指定した特許公報がDBに存在すれば取得    
     (if (gp-find-patent patent-number) (gp-get-patent-from-db patent-number)
       (message "Error: %s cannot load." patent-number ))))
-
 (defun gp-get-patent-as-dom (patent-number)
   t)
 
@@ -141,6 +137,25 @@
        (mapconcat #'shell-quote-argument
 		  (list wget-program url "-O" file) " ")))))
 
+
+(defun gp-request-and-store-patent (patent-number)
+  (let* ((url (concat gp-url patent-number))
+	(local-db (concat (gp-full-path-to-rawfile-store patent-number)))
+	(local-file (concat local-db rawfile-name)))
+    (message "%S" url)
+    (message "%S %s" local-db (file-exists-p local-db))
+    (unless (file-exists-p local-db) (make-directory local-db t))
+    (message "%S" local-file)
+    (request url
+	     :parser 'buffer-string
+	     :complete (function*
+			(lambda (&key data &allow-other-keys)
+			  (switch-to-buffer "*request-result*")
+			  (insert data)
+			  (goto-char (point-min))
+			  (write-file local-file)
+			  )))))
+    
 (defun gp-convert-html-to-dom (in-buffer)
   (your-sanitize-function
    (with-current-buffer in-buffer
