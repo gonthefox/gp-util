@@ -155,7 +155,21 @@
 			  (goto-char (point-min))
 			  (write-file local-file)
 			  )))))
-    
+
+(defun gp-retrieve-and-store-patent (patent-number)
+  (let* ((url (concat gp-url patent-number))
+	(local-db (concat (gp-full-path-to-rawfile-store patent-number)))
+	(local-file (concat local-db rawfile-name)))
+    (message "%S" url)
+    (message "%S %s" local-db (file-exists-p local-db))
+    (unless (file-exists-p local-db) (make-directory local-db t))
+    (message "%S" local-file)
+    (with-current-buffer (url-retrieve-synchronously url)
+      (goto-char (point-min))
+      (re-search-forward "^$")
+      (delete-region (point-min) (point))
+      (write-file local-file))))
+
 (defun gp-convert-html-to-dom (in-buffer)
   (your-sanitize-function
    (with-current-buffer in-buffer
@@ -177,6 +191,13 @@
 	(setq result section)
       )))
   
+(defun gp-get-abstract (dom)
+  "Rectify abstract section"
+  (gp-rectify-section dom "abstract"))
+
+(defun gp-get-claims (dom)
+  "Rectify claims section"
+  (gp-rectify-section dom "claims"))
 
 (defun gp-rectify-section (dom section-id)
   "Extract essential text and remove (br nil) tags"
@@ -186,19 +207,20 @@
 	       (setq result div)))))
     (delete '(br nil) essential-tag)))
 
-(defun gp-get-abstract (dom-list)
+(defun gp-get-abstract-section (dom-list)
+  "Return abstract section as a dom"
   (gp-get-each-section dom-list "abstract"))
 
-(defun gp-get-description (dom-list)
+(defun gp-get-description-section (dom-list)
   (gp-get-each-section dom-list "description"))
 
-(defun gp-get-claims (dom-list)
+(defun gp-get-claims-section (dom-list)
   (gp-get-each-section dom-list "claims"))
 
-(defun gp-get-metadata (dom-list)
+(defun gp-get-metadata-section (dom-list)
   (gp-get-each-section dom-list "metadata"))
 
-(defun gp-get-application (dom-list)
+(defun gp-get-application-section (dom-list)
   (gp-get-each-section dom-list "application"))
 
 ;; link group
