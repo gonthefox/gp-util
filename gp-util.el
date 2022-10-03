@@ -186,10 +186,11 @@
 
 (defun gp-get-each-section (dom-list section-id)
   "Get the section specified by section-id and return it as dom"
-  (dolist (section dom-list result)
-    (if (string= (dom-attr section 'itemprop) section-id)
-	(setq result section)
-      )))
+  (let (result)
+    (dolist (section dom-list result)
+      (if (string= (dom-attr section 'itemprop) section-id)
+	  (setq result section)
+	))))
   
 (defun gp-get-abstract (dom)
   "Rectify abstract section"
