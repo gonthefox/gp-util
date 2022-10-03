@@ -200,6 +200,28 @@
   "Rectify claims section"
   (gp-rectify-section dom "claims"))
 
+(defun gp-get-description-heading (dom)
+  "Get headings and return them as a dom-list"
+  (setq headings (dom-by-tag dom 'heading)))
+
+(defun gp-get-description-paragraph (dom)
+  "Get paragraphs and return them as a dom-list"
+  (let (result)
+    (dolist (div (dom-by-tag dom 'div) result)
+      (if (string= (dom-attr div 'class) "description-paragraph")
+	  (setq result (cons div result))))))
+
+(defun gp-convert-dom-to-org (dom)
+  (let ((paragraph-number (dom-attr dom 'num)))
+    (with-temp-buffer
+      (insert (format "[%s] %s" paragraph-number (dom-text dom)))
+      (buffer-string))))
+
+
+(defun gp-get-description (dom)
+  "Rectify description section"
+  (gp-rectify-section dom "description"))
+
 (defun gp-rectify-section (dom section-id)
   "Extract essential text and remove (br nil) tags"
   (let ((essential-tag 
