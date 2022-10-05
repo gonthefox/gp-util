@@ -15,9 +15,9 @@
 
 (setq url-user-agent "User-Agent: w3m/0.5.3\r\n")
 
-(load "gp-util-claim")
-(load "gp-util-print")
-(load "gp-util-misc")
+;(load "gp-util-claim")
+;(load "gp-util-print")
+;(load "gp-util-misc")
 
 (defcustom db-path "/var/db/patent/"
   "full path to the directory where rawfiles will be stored.")
@@ -211,12 +211,38 @@
       (if (string= (dom-attr div 'class) "description-paragraph")
 	  (setq result (cons div result))))))
 
-(defun gp-convert-dom-to-org (dom)
+(defun gp-convert-dom-to-org (dom-list)
+  (message "gp-convert-dom-org")
+  (let (result)
+    (dolist (dom dom-list result)
+      (message (format "%s" (dom-attr dom 'num)))
+      (setq result (cons (gp-convert-dom-to-org-1 dom) result)))))
+
+(defun gp-convert-dom-to-org-1 (dom)
   (let ((paragraph-number (dom-attr dom 'num)))
     (with-temp-buffer
-      (insert (format "[%s] %s" paragraph-number (dom-text dom)))
+      (insert (format "[%s] %s" paragraph-number
+		      (gp-italic-and-bold (dom-children dom))
+		      ))
       (buffer-string))))
 
+(defun gp-italic-and-bold (lst)
+  (message "gp-italic-and-bold")
+  (with-temp-buffer
+    (dolist (item lst)
+      (insert (format "%s" item)))
+    (goto-char (point-min))
+    (while
+	(re-search-forward "(\\(\\w+\\)\s\\(\\w+\\)\s\\(.+?\\))" nil t)
+      (message "%s" (match-string 0))
+      (replace-match
+       (cond ((string= (match-string 1) "i")   (format "/%s/"  (match-string 3)))
+	     ((string= (match-string 1) "b")   (format "*%s*"  (match-string 3)))
+	     ((string= (match-string 1) "sub") (format "_{%s}" (match-string 3)))
+	     (t (format "%s" (match-string 0)))))
+      )
+    (buffer-string))
+  )
 
 (defun gp-get-description (dom)
   "Rectify description section"
