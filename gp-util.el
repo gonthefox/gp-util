@@ -211,12 +211,17 @@
       (if (string= (dom-attr div 'class) "description-paragraph")
 	  (setq result (cons div result))))))
 
-(defun gp-convert-dom-to-org (dom)
+(defun gp-convert-dom-to-org (dom-list)
+  (let (result)
+    (dolist (dom dom-list result)
+      (message (format "%s" (dom-attr dom 'num)))
+      (setq result (cons (gp-convert-dom-to-org-1 dom) result)))))
+
+(defun gp-convert-dom-to-org-1 (dom)
   (let ((paragraph-number (dom-attr dom 'num)))
     (with-temp-buffer
       (insert (format "[%s] %s" paragraph-number (dom-text dom)))
       (buffer-string))))
-
 
 (defun gp-get-description (dom)
   "Rectify description section"
