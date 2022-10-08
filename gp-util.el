@@ -213,10 +213,11 @@
 
 (defun gp-convert-dom-to-org (dom-list)
   (message "gp-convert-dom-org")
-  (let (result)
-    (dolist (dom dom-list result)
+  (with-temp-buffer
+    (dolist (dom dom-list)
       (message (format "%s" (dom-attr dom 'num)))
-      (setq result (cons (gp-convert-dom-to-org-1 dom) result)))))
+      (insert (format "%s\n" (gp-convert-dom-to-org-1 dom))))
+    (buffer-string)))
 
 (defun gp-convert-dom-to-org-1 (dom)
   (let ((paragraph-number (dom-attr dom 'num)))
@@ -236,8 +237,8 @@
 	(re-search-forward "(\\(\\w+\\)\s\\(\\w+\\)\s\\(.+?\\))" nil t)
       (message "%s" (match-string 0))
       (replace-match
-       (cond ((string= (match-string 1) "i")   (format "/%s/"  (match-string 3)))
-	     ((string= (match-string 1) "b")   (format "*%s*"  (match-string 3)))
+       (cond ((string= (match-string 1) "i")   (format " /%s/ "  (match-string 3)))
+	     ((string= (match-string 1) "b")   (format " *%s* "  (match-string 3)))
 	     ((string= (match-string 1) "sub") (format "_{%s}" (match-string 3)))
 	     (t (format "%s" (match-string 0)))))
       )
