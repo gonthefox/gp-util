@@ -214,7 +214,7 @@
 (defun gp-convert-dom-to-org (dom-list)
   (message "gp-convert-dom-org")
   (with-temp-buffer
-    (dolist (dom dom-list)
+    (dolist (dom (nreverse dom-list))
       (message (format "%s" (dom-attr dom 'num)))
       (insert (format "%s\n" (gp-convert-dom-to-org-1 dom))))
     (buffer-string)))
@@ -223,25 +223,37 @@
   (let ((paragraph-number (dom-attr dom 'num)))
     (with-temp-buffer
       (insert (format "[%s] %s" paragraph-number
-		      (gp-italic-and-bold (dom-children dom))
+		      (gp-convert-decorations (dom-children dom))
 		      ))
       (buffer-string))))
 
-(defun gp-italic-and-bold (lst)
-  (message "gp-italic-and-bold")
+(defun gp-convert-decorations (lst)
+  (message "gp-convert-decorations")
   (with-temp-buffer
     (dolist (item lst)
       (insert (format "%s" item)))
+    ;; convert italic, bold, subscript
     (goto-char (point-min))
     (while
-	(re-search-forward "(\\(\\w+\\)\s\\(\\w+\\)\s\\(.+?\\))" nil t)
+	(re-search-forward "(\\(\\w+\\)\s\\(\\w+\\)\s\\(.+?\\)\s?)" nil t)
       (message "%s" (match-string 0))
       (replace-match
        (cond ((string= (match-string 1) "i")   (format " /%s/ "  (match-string 3)))
 	     ((string= (match-string 1) "b")   (format " *%s* "  (match-string 3)))
 	     ((string= (match-string 1) "sub") (format "_{%s}" (match-string 3)))
+	     ((string= (match-string 1) "br")  (format "#+html:<br>\n"))
 	     (t (format "%s" (match-string 0)))))
       )
+    ;; convert figure refs
+    (goto-char (point-min))
+    (while
+	(re-search-forward "(\\(figref\\)\\s-((.+?))\\s-\\(.+?\\))" nil t)
+      (message "%s" (match-string 0))
+      (replace-match
+       (cond ((string= (match-string 1) "figref")   (format "%s"  (match-string 2)))
+	     (t (format "%s" (match-string 0)))))
+      )
+    ;; return buffer content as a string
     (buffer-string))
   )
 
