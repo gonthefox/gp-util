@@ -232,6 +232,16 @@
   (with-temp-buffer
     (dolist (item lst)
       (insert (format "%s" item)))
+
+    ;; convert (br nil)
+    (goto-char (point-min))
+    (while
+	(re-search-forward "(\\(\\w+\\)\s\\(.+?\\)\s?)" nil t)
+      (message "%s" (match-string 0))
+      (replace-match
+       (cond ((string= (match-string 1) "br")  (format "#+html:<br/>"))
+	     (t (format "%s" (match-string 0)))))
+      )
     ;; convert italic, bold, subscript
     (goto-char (point-min))
     (while
@@ -241,7 +251,6 @@
        (cond ((string= (match-string 1) "i")   (format " /%s/ "  (match-string 3)))
 	     ((string= (match-string 1) "b")   (format " *%s* "  (match-string 3)))
 	     ((string= (match-string 1) "sub") (format "_{%s}" (match-string 3)))
-	     ((string= (match-string 1) "br")  (format "#+html:<br>\n"))
 	     (t (format "%s" (match-string 0)))))
       )
     ;; convert figure refs
@@ -262,12 +271,13 @@
   (gp-rectify-section dom "description"))
 
 (defun gp-rectify-section (dom section-id)
-  "Extract essential text and remove (br nil) tags"
-  (let ((essential-tag 
-	 (dolist (div (dom-by-tag dom 'div) result)
-	   (if (string= (dom-attr div 'class) section-id)
-	       (setq result div)))))
-    (delete '(br nil) essential-tag)))
+  "Extract essential text"
+  (message "gp-rectify-section for %s" section-id)
+  (let (result)
+    (dolist (div (dom-by-tag dom 'div) result)
+      (if (string= (dom-attr div 'class) section-id)
+	  (setq result div)))
+    result))
 
 (defun gp-get-abstract-section (dom-list)
   "Return abstract section as a dom"
