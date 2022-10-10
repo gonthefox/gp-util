@@ -206,10 +206,13 @@
 
 (defun gp-get-description-paragraph (dom)
   "Get paragraphs and return them as a dom-list"
+  (message "gp-get-description-paragraph")
   (let (result)
     (dolist (div (dom-by-tag dom 'div) result)
-      (if (string= (dom-attr div 'class) "description-paragraph")
-	  (setq result (cons div result))))))
+      (or (string= (dom-attr div 'class) "description-paragraph")
+	  (string= (dom-attr div 'class) "description-line")
+	  (setq result (cons div result))))
+    result))
 
 (defun gp-convert-dom-to-org (dom-list)
   (message "gp-convert-dom-org")
@@ -232,7 +235,6 @@
   (with-temp-buffer
     (dolist (item lst)
       (insert (format "%s" item)))
-
     ;; convert (br nil)
     (goto-char (point-min))
     (while
