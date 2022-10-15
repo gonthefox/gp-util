@@ -17,7 +17,7 @@
 
 ;(load "gp-util-claim")
 ;(load "gp-util-print")
-;(load "gp-util-misc")
+(load "gp-util-misc")
 
 (defcustom db-path "/var/db/patent/"
   "full path to the directory where rawfiles will be stored.")
@@ -204,15 +204,49 @@
   "Get headings and return them as a dom-list"
   (setq headings (dom-by-tag dom 'heading)))
 
+(defun gp-checkif-ul-type (dom)
+  "check if dom is ul type"
+  (let ((test (dom-tag (nth 0 (dom-children (nth 1 (dom-children dom)))))))
+    (if (string= test "ul") t test)))
+
 (defun gp-get-description-paragraph (dom)
   "Get paragraphs and return them as a dom-list"
   (message "gp-get-description-paragraph")
   (let (result)
-    (dolist (div (dom-by-tag dom 'div) result)
-      (or (string= (dom-attr div 'class) "description-paragraph")
-	  (string= (dom-attr div 'class) "description-line")
-	  (setq result (cons div result))))
+    (if (gp-checkif-ul-type dom)
+	(dolist (li (dom-by-tag dom 'li) result)
+	  (let ((div (nth 1 (dom-children li))))
+	    (if (or (string= (dom-attr div 'class) "description-paragraph") 
+		    (string= (dom-attr div 'class) "description-line"))
+		(setq result (cons div result)))))
+      (dolist (div (dom-by-tag dom 'div) result)
+	(if (or (string= (dom-attr div 'class) "description-paragraph")
+		(string= (dom-attr div 'class) "description-line"))
+	    (setq result (cons div result))))
+      )
     result))
+
+(defun gp-get-description-paragraph-old (dom)
+  "Get paragraphs and return them as a dom-list"
+  (message "gp-get-description-paragraph")
+
+  (if (gp-checkif-ul-type dom)
+      (let (result)
+	(dolist (li (dom-by-tag dom 'li) result)
+	  (let ((div (nth 1 (dom-children li))))
+	    ;;	  (let ((div li ))
+	    (or (string= (dom-attr div 'class) "description-paragraph")
+		(string= (dom-attr div 'class) "description-line")
+		(setq result (cons div result))))
+	  ))
+
+    (let (result)
+      (dolist (div (dom-by-tag dom 'div) result)
+	(or (string= (dom-attr div 'class) "description-paragraph")
+	    (string= (dom-attr div 'class) "description-line")
+	    (setq result (cons div result)))
+	result))
+  ))
 
 (defun gp-convert-dom-to-org (dom-list)
   (message "gp-convert-dom-org")
@@ -272,6 +306,7 @@
   "Rectify description section"
   (gp-rectify-section dom "description"))
 
+;; no need?
 (defun gp-rectify-section (dom section-id)
   "Extract essential text"
   (message "gp-rectify-section for %s" section-id)
