@@ -213,6 +213,7 @@
   "Get paragraphs and return them as a dom-list"
   (message "gp-get-description-paragraph")
   (let (result)
+    ;; if ul type paragraph
     (if (gp-checkif-ul-type dom)
 	(dolist (li (dom-by-tag dom 'li) result)
 	  (let ((div (nth 1 (dom-children li))))
@@ -226,28 +227,6 @@
       )
     result))
 
-(defun gp-get-description-paragraph-old (dom)
-  "Get paragraphs and return them as a dom-list"
-  (message "gp-get-description-paragraph")
-
-  (if (gp-checkif-ul-type dom)
-      (let (result)
-	(dolist (li (dom-by-tag dom 'li) result)
-	  (let ((div (nth 1 (dom-children li))))
-	    ;;	  (let ((div li ))
-	    (or (string= (dom-attr div 'class) "description-paragraph")
-		(string= (dom-attr div 'class) "description-line")
-		(setq result (cons div result))))
-	  ))
-
-    (let (result)
-      (dolist (div (dom-by-tag dom 'div) result)
-	(or (string= (dom-attr div 'class) "description-paragraph")
-	    (string= (dom-attr div 'class) "description-line")
-	    (setq result (cons div result)))
-	result))
-  ))
-
 (defun gp-convert-dom-to-org (dom-list)
   (message "gp-convert-dom-org")
   (with-temp-buffer
@@ -259,7 +238,7 @@
 (defun gp-convert-dom-to-org-1 (dom)
   (let ((paragraph-number (dom-attr dom 'num)))
     (with-temp-buffer
-      (insert (format "[%s] %s" paragraph-number
+      (insert (format "#+begin_quote\n[%s] %s\n#+end_quote" paragraph-number
 		      (gp-convert-decorations (dom-children dom))
 		      ))
       (buffer-string))))
@@ -269,20 +248,26 @@
   (with-temp-buffer
     (dolist (item lst)
       (insert (format "%s" item)))
-    ;; convert (br nil)
+
+;;    (message "buffer: %s" (buffer-substring-no-properties (point-min) (point-max)))
+    
+    ;; convert successive bold and subscript
     (goto-char (point-min))
     (while
-	(re-search-forward "(\\(\\w+\\)\s\\(.+?\\)\s?)" nil t)
-      (message "%s" (match-string 0))
+	(re-search-forward
+	 "(\\(\\w+\\)\s\\(\\w+\\)\s\\(\\w+?\\)\s?)(\\(\\w+\\)\s\\(\\w+\\)\s\\(\\w+?\\)\s?)" nil t)
+      (message "successive: %s" (match-string 0))
       (replace-match
-       (cond ((string= (match-string 1) "br")  (format "#+html:<br/>"))
+       (cond ((and (string= (match-string 1) "b") (string= (match-string 4) "sub"))
+	      (format " *%s_{%s}* "  (match-string 3) (match-string 6)))
 	     (t (format "%s" (match-string 0)))))
       )
+    
     ;; convert italic, bold, subscript
     (goto-char (point-min))
     (while
-	(re-search-forward "(\\(\\w+\\)\s\\(\\w+\\)\s\\(.+?\\)\s?)" nil t)
-      (message "%s" (match-string 0))
+	(re-search-forward "(\\(\\w+\\)\s\\(\\w+\\)\s\\(\\w+?\\)\s?)" nil t)
+      (message "single: %s" (match-string 0))
       (replace-match
        (cond ((string= (match-string 1) "i")   (format " /%s/ "  (match-string 3)))
 	     ((string= (match-string 1) "b")   (format " *%s* "  (match-string 3)))
@@ -292,12 +277,23 @@
     ;; convert figure refs
     (goto-char (point-min))
     (while
-	(re-search-forward "(\\(figref\\)\\s-((.+?))\\s-\\(.+?\\))" nil t)
+	(re-search-forward "(\\(figref\\)\\s-((.+?))\\s-\\(\\w+?\\))" nil t)
       (message "%s" (match-string 0))
       (replace-match
        (cond ((string= (match-string 1) "figref")   (format "%s"  (match-string 2)))
 	     (t (format "%s" (match-string 0)))))
       )
+
+    ;; convert (br nil)
+    (goto-char (point-min))
+    (while
+	(re-search-forward "(\\(\\w+\\)\s\\(\\w+?\\)\s?)" nil t)
+      (message "%s" (match-string 0))
+      (replace-match
+       (cond ((string= (match-string 1) "br")  (format "#+html:<br/>"))
+	     (t (format "%s" (match-string 0)))))
+      )
+
     ;; return buffer content as a string
     (buffer-string))
   )
