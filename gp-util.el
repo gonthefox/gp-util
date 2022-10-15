@@ -16,7 +16,7 @@
 (setq url-user-agent "User-Agent: w3m/0.5.3\r\n")
 
 ;(load "gp-util-claim")
-;(load "gp-util-print")
+(load "gp-util-print")
 (load "gp-util-misc")
 
 (defcustom db-path "/var/db/patent/"
@@ -49,7 +49,6 @@
 (defcustom copy-program "/bin/cp"
   "path for cp")
 
-
 (defun gp-retriever (patent-number)
   "Return paetnt content as s-expression."
   (concat (gp-full-path-to-rawfile-store patent-number) listfile-name))
@@ -80,7 +79,8 @@
     (if (gp-find-patent patent-number) (gp-get-patent-from-db patent-number)
       (message "Error: %s cannot load." patent-number ))))
 (defun gp-get-patent-as-dom (patent-number)
-  t)
+  (gp-convert-html-to-dom 
+   (find-file-noselect (gp-full-path-to-rawfile patent-number))))
 
 (defun gp-get-patent-from-db (patent-number)
   (with-temp-buffer
@@ -122,40 +122,6 @@
    (gp-create-image-embeded-files patent-number)
   ))
 
-(defun gp-retrieve-and-store-patent-wget (patent-number)
-  "Retrieve a patent from Google patents and store it in DB-PATH as RAWFILE-NAME"
-  (let ((url
-	 (if (string= (substring patent-number 0 2) "EP")
-	     (concat gp-url  patent-number "/en?oq=" patent-number)
-	   (concat gp-url  patent-number))
-	 )
-	(store (gp-full-path-to-rawfile-store patent-number))
-	(file  (gp-full-path-to-rawfile patent-number)))
-    (unless (file-exists-p file)
-      (unless (file-exists-p store) (make-directory store t))
-      (call-process-shell-command
-       (mapconcat #'shell-quote-argument
-		  (list wget-program url "-O" file) " ")))))
-
-
-(defun gp-request-and-store-patent (patent-number)
-  (let* ((url (concat gp-url patent-number))
-	(local-db (concat (gp-full-path-to-rawfile-store patent-number)))
-	(local-file (concat local-db rawfile-name)))
-    (message "%S" url)
-    (message "%S %s" local-db (file-exists-p local-db))
-    (unless (file-exists-p local-db) (make-directory local-db t))
-    (message "%S" local-file)
-    (request url
-	     :parser 'buffer-string
-	     :complete (function*
-			(lambda (&key data &allow-other-keys)
-			  (switch-to-buffer "*request-result*")
-			  (insert data)
-			  (goto-char (point-min))
-			  (write-file local-file)
-			  )))))
-
 (defun gp-retrieve-and-store-patent (patent-number)
   (let* ((url (concat gp-url patent-number))
 	(local-db (concat (gp-full-path-to-rawfile-store patent-number)))
@@ -179,10 +145,21 @@
      (libxml-parse-html-region (point-min) (point-max))
      )))
 
+;; generate description
+(defun gp-generate-description (patent-number)
+  "generate description as org format from the html raw file"
+  (gp-convert-dom-to-org
+   (gp-get-description-paragraph
+    (gp-get-description-section
+     (gp-get-sections patent-number)))))
+
 ;; section group
-(defun gp-get-sections (dom)
+(defun gp-get-sections (patent-number)
   "Extract sections and return them as a list."
-  (dom-by-tag dom 'section))
+  (dom-by-tag
+   (gp-convert-html-to-dom 
+    (find-file-noselect (gp-full-path-to-rawfile patent-number)))
+   'section))
 
 (defun gp-get-each-section (dom-list section-id)
   "Get the section specified by section-id and return it as dom"
@@ -277,10 +254,10 @@
     ;; convert figure refs
     (goto-char (point-min))
     (while
-	(re-search-forward "(\\(figref\\)\\s-((.+?))\\s-\\(\\w+?\\))" nil t)
+	(re-search-forward "(\\(figref\\)\\s-((.+?))\\s-\\(.+?\\))" nil t)
       (message "%s" (match-string 0))
       (replace-match
-       (cond ((string= (match-string 1) "figref")   (format "%s"  (match-string 2)))
+       (cond ((string= (match-string 1) "figref")   (format " *%s* "  (match-string 2)))
 	     (t (format "%s" (match-string 0)))))
       )
 
@@ -329,10 +306,10 @@
   (gp-get-each-section dom-list "application"))
 
 ;; link group
-;(defun gp-get-link-item (patent-number link-id)
+(defun gp-get-link-item (patent-number link-id)
   "Get a link-item specified by link-id from a tag"
-;(let ((a-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'a)))
-;  (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) link-id) s a)) a-list :initial-value nil)))
+(let ((a-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'a)))
+  (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) link-id) s a)) a-list :initial-value nil)))
 
 (defun gp-retrieve-and-store-patent-pdf-wget (patent-number)
   (let* ((pdfLink (dom-attr (gp-get-link-item patent-number 'pdfLink) 'href))
@@ -347,7 +324,7 @@
 ;; metadata group
 (defun gp-get-metadata-item (patent-number metadata-id)
   "Get a metadata-item specified by metadata-id from metadata"
-(let ((span-list (dom-by-tag (gp-get-metadata patent-number) 'span)))
+(let ((span-list (dom-by-tag (gp-get-metadata-section (gp-get-sections patent-number)) 'span)))
   (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) metadata-id) s a)) span-list :initial-value nil)))
 
 (defun gp-get-application-number (patent-number)
@@ -376,101 +353,6 @@
   "Get the inventor name"
   (let ((dd-list (dom-by-tag (gp-get-patent-as-dom patent-number) 'dd)))
     (cl-reduce (lambda (s a) (if (string= (dom-attr s 'itemprop) "inventor") s a)) dd-list :initial-value nil)))
-
-
-(defun gp-paragraph-renderer (dom)
-  "Receive a paragraph as a dom and render it as text."
-  (let (( num-string (dom-attr dom 'num)))
-    (if (stringp num-string)
-	(format "#+attr_html: :id %s\n#+begin_quote\n%s\n#+end_quote"
-		(progn (string-match "[0-9]+" num-string) (match-string 0 num-string))
-		(mapconcat 'identity (gp-paragraph-replace-tag dom) "")
-		)
-      (format "#+begin_quote\n%s\n#+end_quote" 
-                (mapconcat 'identity (gp-paragraph-replace-tag dom) ""))
-    )))
-
-(defun gp-paragraph-replace-tag (dom)
-"Replace a tag into org deccoration"
-(let ((items (dom-children dom))
-      (acc nil))
-      (while items
-            (if (listp (car items))
-	        (cond ((eq (dom-tag (car items)) 'b)      
-                           (setq acc (cons (format "*%s*"        (dom-text (car items))) acc)))
-
-		      ((eq (dom-tag (car items)) 'figref) 
-                           (setq acc (cons (format "[[%s:][%s]]" 
-                           (replace-regexp-in-string (concat (regexp-quote "FIG.") "\\s-*\\([0-9]+\\)") "FIGREF-\\1" (dom-text (car items)))
-			   (dom-text (car items))) acc)))
-					   
-;		      ((eq (dom-tag (car items)) 'br) 
-;                           (setq acc (cons (format "\n") acc)))
-
-		      (t  (setq acc (cons (format "%s" (car items)) acc))))
-	    (setq acc (cons (format "%s" (car items)) acc)))
-            (setq items (cdr items)))
-	    (nreverse acc)))
-
-(defun gp-description-renderer-1 (dom result)
-  (append
-   (cl-reduce 
-
-    (lambda (acc object) 
-      (cond 
-       ((and (listp object) (symbolp (car object)))
-	(cond 
-	 ( (eq (car object) 'h2) (cons (format "* %s\n" (nth 2 object)) acc) )
-	 ( (eq (car object) 'heading) (cons (format "** %s\n" (nth 2 object)) acc) )
-	 ( (and (eq (car object) 'div)
-		(or (string= (dom-attr object 'class) "description-line")
-		    (string= (dom-attr object 'class) "description-paragraph")))
-	       (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
-	 ( (eq (car object) 'p) (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
-	 ( t (gp-description-renderer-1 (cddr object) acc ))
-	 ( t acc)
-	 ))
-       (t acc)))
-	      
-    dom :initial-value nil
-    ) ;; cl-reduce
-   result) ;;append
-  );; defun
-
-
-(defun gp-description-renderer (dom)
-  (mapconcat 'identity (nreverse (gp-description-renderer-1 dom nil)) ""))
-
-
-(defun gp-abstract-renderer-1 (dom result)
-  (append
-   (cl-reduce 
-
-    (lambda (acc object) 
-      (cond 
-       ((and (listp object) (symbolp (car object)))
-	(cond 
-	 ( (eq (car object) 'h2) (cons (format "* %s\n" (nth 2 object)) acc) )
-	 ( (eq (car object) 'heading) (cons (format "** %s\n" (nth 2 object)) acc) )
-
-	 ( (and (eq (car object) 'div) (eq (car (car (car (cdr object)))) 'num ))
-	   (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
-
-	 ( (and (eq (car object) 'div) (string= (dom-attr object 'class) "abstract")) 
-	       (cons (format "%s\n" (gp-paragraph-renderer object)) acc) )
-
-	 ( t (gp-abstract-renderer-1 (cddr object) acc ))
-;	 ( t acc)
-	 ))
-       (t acc)))
-	      
-    dom :initial-value nil
-    ) ;; cl-reduce
-   result) ;;append
-  );; defun
-
-(defun gp-abstract-renderer (dom)
-  (mapconcat 'identity (nreverse (gp-abstract-renderer-1 dom nil)) ""))
 
 
 
@@ -557,23 +439,5 @@
                     (replace-regexp-in-string (concat (regexp-quote "FIG.") "\\s-*\\([0-9]+\\)") "FIGREF-\\1" (dom-text (car figref-list))) acc))
 	 (setq figref-list (cdr figref-list)))
 	 (delete-dups acc)))
-
-
-;; below functions are for utility 
-;; list of doms only. if single dom is provided, the very first tag will be omitted. 
-(defun scan-dom-multi (result dom-list)
-  (reverse (cl-reduce #'scan-dom-single dom-list :initial-value nil)))
-
-;; single dom only. if list of doms is provided, nil will be produced.
-(defun scan-dom-single (acc dom)
-  (cond ((atom dom) acc)
-	((symbolp (car dom)) (setq acc (cons (dom-tag dom) acc)) 
-	 (let (( has-children (scan-dom-multi nil (dom-children dom)) )) 
-	   (if has-children (cons has-children acc) acc)))
-	(t acc)) 
-  )
-
-(defun scan-dom (dom-list)
-  (scan-dom-multi nil dom-list))
 
 (provide 'gp-util)

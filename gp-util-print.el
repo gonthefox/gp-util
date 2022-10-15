@@ -83,30 +83,30 @@
 (defun gp-print-specification (patent-number)
   "Print specification as HTML"
 ;  (gp-get-patent patent-number)
-  (if (file-exists-p (gp-full-path-to-images-store patent-number))
-      (gp-import-figs-from-db patent-number))
+;  (if (file-exists-p (gp-full-path-to-images-store patent-number))
+;      (gp-import-figs-from-db patent-number))
 ;  (gp-import-image-aliases-from-db patent-number)
 ;  (gp-import-image-embeded-files-from-db patent-number)
-  (if (file-exists-p (gp-full-path-to-pdf patent-number))
-      (gp-import-pdf-from-db patent-number))
+;  (if (file-exists-p (gp-full-path-to-pdf patent-number))
+;      (gp-import-pdf-from-db patent-number))
   (gp-import-style-file)
   (with-temp-buffer
-    (insert (format "#+html: <a href=\"%s\">PDF<a/>\n" (file-name-nondirectory (gp-full-path-to-pdf patent-number))))
-    (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
-		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))
-    (insert (format "#+html: <h2 style=\"text-align: center;\">%s</h2>\n"
-		    (gp-pretty-print-patent-number
-		     (dom-text (gp-get-representative-publication patent-number)))))
+;    (insert (format "#+html: <a href=\"%s\">PDF<a/>\n" (file-name-nondirectory (gp-full-path-to-pdf patent-number))))
+;    (insert (format "#+html: <h1 style=\"text-align: center;\">%s</h1>\n"
+;		    (replace-regexp-in-string "\\s-+$" "" (dom-text (gp-get-title patent-number)))))
+;    (insert (format "#+html: <h2 style=\"text-align: center;\">%s</h2>\n"
+;		    (gp-pretty-print-patent-number
+;		     (dom-text (gp-get-representative-publication patent-number)))))
     (insert (format "#+author: %s\n" (nth 2 (gp-get-inventor patent-number))))
     (insert (format "#+date: %s\n" (nth 2 (gp-get-filing-date patent-number))))
     (insert (format "#+options: toc:nil H:5\n"))
     (insert (format "#+TOC: headlines 5\n"))
     (insert (format "#+include: \"%s\" \n" image-aliases-name))
     (insert (format "#+include: \"%s\" \n" style-name))
-    (insert (format "#+include: \"%s\" \n" org-macros))        
-    (insert (gp-abstract-renderer (gp-get-abstract patent-number)))
-    (insert (gp-description-renderer (gp-get-description patent-number)))
-    (insert (gp-claims-renderer (gp-get-claims patent-number)))
+;   (insert (format "#+include: \"%s\" \n" org-macros))        
+;    (insert (gp-abstract-renderer (gp-get-abstract patent-number)))
+    (insert (gp-generate-description patent-number))
+;    (insert (gp-claims-renderer (gp-get-claims patent-number)))
 ;;    (insert (gp-claim-tree-renderer-asterisk (gp-make-claim-tree patent-number)))
     (buffer-string)))
 
