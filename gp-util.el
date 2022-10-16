@@ -237,8 +237,6 @@
   (with-temp-buffer
     (dolist (item lst)
       (insert (format "%s" item)))
-
-;;    (message "buffer: %s" (buffer-substring-no-properties (point-min) (point-max)))
     
     ;; convert successive bold and subscript
     (goto-char (point-min))
@@ -285,6 +283,13 @@
 	     (t (format "%s" (match-string 0)))))
       )
 
+    ;; remove redundant paragraph number
+    (goto-char (point-min))
+    (while
+	(re-search-forward "\\(【[０-９]+】\\)" nil t)    
+      (message "%s" (match-string 0))
+      (replace-match ""))
+    
     ;; return buffer content as a string
     (buffer-string))
   )
