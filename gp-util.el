@@ -16,8 +16,8 @@
 (setq url-user-agent "User-Agent: w3m/0.5.3\r\n")
 
 ;(load "gp-util-claim")
-(load "gp-util-print")
-(load "gp-util-misc")
+;(load "gp-util-print")
+;(load "gp-util-misc")
 
 (defcustom db-path "/var/db/patent/"
   "full path to the directory where rawfiles will be stored.")
@@ -111,7 +111,7 @@
   (string-match "\\([A-Z]\\{2\\}[0-9]\\{7,8\\}\\)" patent-number)
   (setq short-pn (match-string 1 patent-number)))
 
-(defun gp-retrieve-and-store-patent (PATENT-NUMBER)
+(defun gp-retrieve-and-store-patent-old (PATENT-NUMBER)
   "Retrieve a patent specified by PATENT-NUMBER from Google Patent 
    and transform into a dom tree"
   (progn
@@ -126,8 +126,9 @@
   (let* ((url (concat gp-url patent-number))
 	(local-db (concat (gp-full-path-to-rawfile-store patent-number)))
 	(local-file (concat local-db rawfile-name)))
-    (message "%S" url)
-    (message "%S %s" local-db (file-exists-p local-db))
+    (message "Target patent URL is: %S" url)
+    (message "local db is: %S %s" local-db (file-exists-p local-db))
+    (if (file-exists-p local-db) (message "local db: %S found" local-db)) 
     (unless (file-exists-p local-db) (make-directory local-db t))
     (message "%S" local-file)
     (with-current-buffer (url-retrieve-synchronously url)
@@ -184,7 +185,7 @@
 (defun gp-checkif-ul-type (dom)
   "check if dom is ul type"
   (let ((test (dom-tag (nth 0 (dom-children (nth 1 (dom-children dom)))))))
-    (if (string= test "ul") t test)))
+    (if (string= test "ul") t nil)))
 
 (defun gp-get-description-paragraph (dom)
   "Get paragraphs and return them as a dom-list"
@@ -213,7 +214,9 @@
     (buffer-string)))
 
 (defun gp-convert-dom-to-org-1 (dom)
-  (let ((paragraph-number (dom-attr dom 'num)))
+  (let* ((paragraph-number-whole (dom-attr dom 'num))
+	 (paragraph-number
+	  (progn (string-match "\\([0-9]+\\)" paragraph-number-whole) (match-string 1 paragraph-number-whole))))
     (with-temp-buffer
       (insert (format "#+begin_quote\n[%s] %s\n#+end_quote" paragraph-number
 		      (gp-convert-decorations (dom-children dom))
@@ -274,20 +277,6 @@
     ;; return buffer content as a string
     (buffer-string))
   )
-
-(defun gp-get-description (dom)
-  "Rectify description section"
-  (gp-rectify-section dom "description"))
-
-;; no need?
-(defun gp-rectify-section (dom section-id)
-  "Extract essential text"
-  (message "gp-rectify-section for %s" section-id)
-  (let (result)
-    (dolist (div (dom-by-tag dom 'div) result)
-      (if (string= (dom-attr div 'class) section-id)
-	  (setq result div)))
-    result))
 
 (defun gp-get-abstract-section (dom-list)
   "Return abstract section as a dom"
