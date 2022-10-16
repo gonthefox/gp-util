@@ -214,14 +214,23 @@
     (buffer-string)))
 
 (defun gp-convert-dom-to-org-1 (dom)
-  (let* ((paragraph-number-whole (dom-attr dom 'num))
-	 (paragraph-number
-	  (progn (string-match "\\([0-9]+\\)" paragraph-number-whole) (match-string 1 paragraph-number-whole))))
-    (with-temp-buffer
-      (insert (format "#+begin_quote\n[%s] %s\n#+end_quote" paragraph-number
+  (message "gp-convert-dom-org-1")
+  (with-temp-buffer  
+    (let ((paragraph-number-whole (dom-attr dom 'num)))
+      (if paragraph-number-whole
+	  (progn
+	    (setq paragraph-number
+		  (progn
+		    (string-match "\\([0-9]+\\)" paragraph-number-whole)
+		    (match-string 1 paragraph-number-whole)))
+	    
+	    (insert (format "#+begin_quote\n[%s] %s\n#+end_quote" paragraph-number
+			    (gp-convert-decorations (dom-children dom))
+			    )))
+	(insert (format "#+begin_quote\n%s\n#+end_quote"
 		      (gp-convert-decorations (dom-children dom))
-		      ))
-      (buffer-string))))
+		      ))))
+    (buffer-string)))
 
 (defun gp-convert-decorations (lst)
   (message "gp-convert-decorations")
@@ -270,7 +279,9 @@
 	(re-search-forward "(\\(\\w+\\)\s\\(\\w+?\\)\s?)" nil t)
       (message "%s" (match-string 0))
       (replace-match
-       (cond ((string= (match-string 1) "br")  (format "#+html:<br/>"))
+       ;;       (cond ((string= (match-string 1) "br")  (format "#+html:<br/>"))
+       ;; うまくいかないので削除とした 
+       (cond ((string= (match-string 1) "br")  (format ""))	     
 	     (t (format "%s" (match-string 0)))))
       )
 
