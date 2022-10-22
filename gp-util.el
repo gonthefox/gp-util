@@ -16,7 +16,7 @@
 (setq url-user-agent "User-Agent: w3m/0.5.3\r\n")
 
 ;(load "gp-util-claim")
-;(load "gp-util-print")
+(load "gp-util-print")
 ;(load "gp-util-misc")
 
 (defcustom db-path "/var/db/patent/"
@@ -78,9 +78,10 @@
     ;; 指定した特許公報がDBに存在すれば取得    
     (if (gp-find-patent patent-number) (gp-get-patent-from-db patent-number)
       (message "Error: %s cannot load." patent-number ))))
+
 (defun gp-get-patent-as-dom (patent-number)
   (gp-convert-html-to-dom 
-   (find-file-noselect (gp-full-path-to-rawfile patent-number))))
+   (gp-full-path-to-rawfile patent-number)))
 
 (defun gp-get-patent-from-db (patent-number)
   (with-temp-buffer
@@ -137,15 +138,6 @@
       (delete-region (point-min) (point))
       (write-file local-file))))
 
-(defun gp-convert-html-to-dom (in-buffer)
-  (your-sanitize-function
-   (with-current-buffer in-buffer
-     (while (re-search-forward "^[\s-]+$" nil t)
-       (replace-match ""))
-     (flush-lines "^\n")
-     (libxml-parse-html-region (point-min) (point-max))
-     )))
-
 ;; generate description
 (defun gp-generate-description (patent-number)
   "generate description as org format from the html raw file"
@@ -157,10 +149,24 @@
 ;; section group
 (defun gp-get-sections (patent-number)
   "Extract sections and return them as a list."
+  (message "gp-get-sections")
   (dom-by-tag
-   (gp-convert-html-to-dom 
-    (find-file-noselect (gp-full-path-to-rawfile patent-number)))
+   (gp-convert-html-to-dom (gp-full-path-to-rawfile patent-number))
    'section))
+
+(defun gp-convert-html-to-dom (file-name)
+  ;; Convert html file specified as file name to dom.
+  (message "gp-convert-html-to-dom")
+  (message "file name: %s" file-name)
+
+   (setq dom (with-current-buffer (find-file-noselect file-name)
+	       (goto-char (point-min))
+	       (while (re-search-forward "^[\s-]+$" nil t)
+		 (replace-match ""))
+	       (flush-lines "^\n")
+	       (libxml-parse-html-region (point-min) (point-max))))
+
+   (your-sanitize-function dom))
 
 (defun gp-get-each-section (dom-list section-id)
   "Get the section specified by section-id and return it as dom"
@@ -184,33 +190,41 @@
 
 (defun gp-checkif-ul-type (dom)
   "check if dom is ul type"
+  (message "gp-checkif-ul-type")
   (let ((test (dom-tag (nth 0 (dom-children (nth 1 (dom-children dom)))))))
-    (if (string= test "ul") t nil)))
+    (if (string= test "ul")
+	(progn (message "UL type") t) (progn (message "not UL type") nil))))
 
 (defun gp-get-description-paragraph (dom)
   "Get paragraphs and return them as a dom-list"
   (message "gp-get-description-paragraph")
   (let (result)
-    ;; if ul type paragraph
-    (if (gp-checkif-ul-type dom)
-	(dolist (li (dom-by-tag dom 'li) result)
-	  (let ((div (nth 1 (dom-children li))))
-	    (if (or (string= (dom-attr div 'class) "description-paragraph") 
-		    (string= (dom-attr div 'class) "description-line"))
-		(setq result (cons div result)))))
-      (dolist (div (dom-by-tag dom 'div) result)
-	(if (or (string= (dom-attr div 'class) "description-paragraph")
-		(string= (dom-attr div 'class) "description-line"))
-	    (setq result (cons div result))))
-      )
+    (dolist (item (dom-children dom) result)
+      (message "%s" (dom-tag item))
+      (cond ((string= (dom-tag item) "h2") (setq result (cons item result)))
+	    ((string= (dom-attr item 'itemprop) "content")
+	     (setq result 
+		   (cons (gp-get-description-paragraph-ul (nth 0 (dom-children item))) result)))))
     result))
 
-(defun gp-convert-dom-to-org (dom-list)
+(defun gp-get-description-paragraph-ul (dom)
+  "Get paragraphs and return them as a dom-list"
+  (message "gp-get-description-paragraph-ul")
+  (let (result)
+    (dolist (item (dom-children dom) result)
+      (message "tag: %s" (dom-tag item))
+      (cond ((string= (dom-tag  item) "heading") (setq result (cons item result)))
+	    ((or (string= (dom-attr (nth 0 (dom-by-tag item 'div)) 'class) "description-paragraph")
+		(string= (dom-attr (nth 0 (dom-by-tag item 'div)) 'class) "description-line"))
+	     (setq result (cons (nth 0 (dom-by-tag item 'div)) result)))))
+    result))
+
+(defun gp-convert-dom-to-org (dom)
   (message "gp-convert-dom-org")
   (with-temp-buffer
-    (dolist (dom (nreverse dom-list))
-      (message (format "%s" (dom-attr dom 'num)))
-      (insert (format "%s\n" (gp-convert-dom-to-org-1 dom))))
+    (dolist (dom-0 (nreverse (nth 0 dom)))
+      (message (format "%s" (dom-attr dom-0 'num)))
+      (insert (format "%s\n" (gp-convert-dom-to-org-1 dom-0))))
     (buffer-string)))
 
 (defun gp-convert-dom-to-org-1 (dom)
