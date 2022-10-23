@@ -184,10 +184,6 @@
   "Rectify claims section"
   (gp-rectify-section dom "claims"))
 
-(defun gp-get-description-heading (dom)
-  "Get headings and return them as a dom-list"
-  (setq headings (dom-by-tag dom 'heading)))
-
 (defun gp-checkif-ul-type (dom)
   "check if dom is ul type"
   (message "gp-checkif-ul-type")
@@ -241,9 +237,9 @@
 	    (insert (format "#+begin_quote\n[%s] %s\n#+end_quote" paragraph-number
 			    (gp-convert-decorations (dom-children dom))
 			    )))
-	(insert (format "#+begin_quote\n%s\n#+end_quote"
-		      (gp-convert-decorations (dom-children dom))
-		      ))))
+	(if (string= (dom-tag dom) "heading") (insert (format "** %s" (dom-text dom)))
+	  (insert (format "#+begin_quote\n%s\n#+end_quote"
+			  (gp-convert-decorations (dom-children dom)))))))
     (buffer-string)))
 
 (defun gp-convert-decorations (lst)
@@ -264,7 +260,7 @@
 	     (t (format "%s" (match-string 0)))))
       )
     
-    ;; convert italic, bold, subscript
+    ;; convert italic, bold, subscript, heading
     (goto-char (point-min))
     (while
 	(re-search-forward "(\\(\\w+\\)\s\\(\\w+\\)\s\\(\\w+?\\)\s?)" nil t)
