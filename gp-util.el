@@ -210,6 +210,7 @@
     (dolist (item (dom-children dom) result)
       (message "tag: %s" (dom-tag item))
       (cond ((string= (dom-tag  item) "heading") (setq result (cons item result)))
+	    ((string= (dom-tag  item) "description-of-drawings") (setq result (nconc (gp-get-description-paragraph-ul item) result)))
 	    ((or (string= (dom-attr (nth 0 (dom-by-tag item 'div)) 'class) "description-paragraph")
 		(string= (dom-attr (nth 0 (dom-by-tag item 'div)) 'class) "description-line"))
 	     (setq result (cons (nth 0 (dom-by-tag item 'div)) result)))))
@@ -233,10 +234,8 @@
 		  (progn
 		    (string-match "\\([0-9]+\\)" paragraph-number-whole)
 		    (match-string 1 paragraph-number-whole)))
-	    
 	    (insert (format "#+begin_quote\n[%s] %s\n#+end_quote" paragraph-number
-			    (gp-convert-decorations (dom-children dom))
-			    )))
+			    (gp-convert-decorations (dom-children dom)))))
 	(if (string= (dom-tag dom) "heading") (insert (format "** %s" (dom-text dom)))
 	  (insert (format "#+begin_quote\n%s\n#+end_quote"
 			  (gp-convert-decorations (dom-children dom)))))))
