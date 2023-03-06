@@ -13,11 +13,11 @@
 (require 'dom)
 (require 'request)
 
-(setq url-user-agent "User-Agent: w3m/0.5.3\r\n")
+(add-to-list 'load-path "~/github/gp-util/" )
 
-;(load "gp-util-claim")
+(load "gp-util-claim")
 (load "gp-util-print")
-;(load "gp-util-misc")
+(load "gp-util-misc")
 
 (defcustom db-path "/var/db/patent/"
   "full path to the directory where rawfiles will be stored.")
@@ -71,13 +71,17 @@
 
 (defun gp-get-patent (patent-number)
   "Get a patent document as a string of the raw html"
-  ;; 指定した特許公報がDBに存在すれば取得
-  (if (gp-find-patent patent-number) (gp-get-patent-from-db patent-number)
+  ;; 指定した特許公報がDBに存在すれば t
+  (if (gp-find-patent patent-number)
+      (progn (message "%s found in local db." patent-number) t)
     ;; Google Patentから特許公報を取得
-    (gp-retrieve-patent patent-number)
+    (progn
+      (message "%s not found in local db. Retrieving..." patent-number)
+      (gp-retrieve-patent patent-number)
     ;; 指定した特許公報がDBに存在すれば取得    
-    (if (gp-find-patent patent-number) (gp-get-patent-from-db patent-number)
-      (message "Error: %s cannot load." patent-number ))))
+      (if (gp-find-patent patent-number)
+	  (progn (message "%s retrieved and stored in local db." patent-number) t)
+	(progn (message "Error: %s cannot load." patent-number ) nil)))))
 
 (defun gp-get-patent-as-dom (patent-number)
   (gp-convert-html-to-dom 
@@ -124,19 +128,27 @@
   ))
 
 (defun gp-retrieve-and-store-patent (patent-number)
+  "Retrieve patent publication from Google patents"
   (let* ((url (concat gp-url patent-number))
 	(local-db (concat (gp-full-path-to-rawfile-store patent-number)))
 	(local-file (concat local-db rawfile-name)))
+
     (message "Target patent URL is: %S" url)
     (message "local db is: %S %s" local-db (file-exists-p local-db))
-    (if (file-exists-p local-db) (message "local db: %S found" local-db)) 
-    (unless (file-exists-p local-db) (make-directory local-db t))
-    (message "%S" local-file)
-    (with-current-buffer (url-retrieve-synchronously url)
-      (goto-char (point-min))
-      (re-search-forward "^$")
-      (delete-region (point-min) (point))
-      (write-file local-file))))
+
+    ;; check if local-db exists
+    (if (file-exists-p local-db) (message "local db: %S found" local-db)
+      (progn (message "creating local db: %s" local-db)
+	     (make-directory local-db t)
+	     (message "done."))
+      (unless (file-exists-p local-file)
+	(progn
+	  (message "retrieving %s..." patent-number)
+	  (with-current-buffer (url-retrieve-synchronously url)
+	    (goto-char (point-min))
+	    (re-search-forward "^$")
+	    (delete-region (point-min) (point))
+	    (write-file local-file)))))))
 
 ;; generate description
 (defun gp-generate-description (patent-number)
@@ -147,25 +159,29 @@
      (gp-get-sections patent-number)))))
 
 ;; section group
-(defun gp-get-sections (patent-number)
+(defun gp-get-sections (filename)
   "Extract sections and return them as a list."
   (message "gp-get-sections")
-  (dom-by-tag
-   (gp-convert-html-to-dom (gp-full-path-to-rawfile patent-number))
-   'section))
+  (dom-by-tag (gp-convert-html-to-dom filename) 'section))
 
-(defun gp-convert-html-to-dom (file-name)
+(defun gp-convert-html-file-to-dom (FILENAME)
   ;; Convert html file specified as file name to dom.
   (message "gp-convert-html-to-dom")
-  (message "file name: %s" file-name)
+  (message "file name: %s" FILENAME)
 
-   (setq dom (with-current-buffer (find-file-noselect file-name)
-	       (goto-char (point-min))
+  (setq dom (with-current-buffer (find-file-noselect FILENAME)
+	      (gp-convert-html-to-dom (buffer-string)))))
+
+(defun gp-convert-html-to-dom (STRING)
+  ;; Convert a html string to a dom.
+  (message "gp-convert-html-to-dom")
+
+   (setq dom (with-temp-buffer 
+	       (insert STRING)
 	       (while (re-search-forward "^[\s-]+$" nil t)
 		 (replace-match ""))
 	       (flush-lines "^\n")
 	       (libxml-parse-html-region (point-min) (point-max))))
-
    (your-sanitize-function dom))
 
 (defun gp-get-each-section (dom-list section-id)
